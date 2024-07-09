@@ -204,11 +204,6 @@ export const selectModifierSmolPixels = createSelector(
     (smolPixels) => smolPixels
 );
 
-export const selectIsOverlayEnabled = createSelector(
-    (state: RootState) => state.overlay.overlayEnabled,
-    (overlayEnabled) => overlayEnabled
-);
-
 export const selectInputImageLoadingStatus = createSelector(
     (state: RootState) => state.processedImages.inputImage.loadedImage.status,
     (status) => status

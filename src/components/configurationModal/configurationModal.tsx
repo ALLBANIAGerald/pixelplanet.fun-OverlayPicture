@@ -7,10 +7,10 @@ import ExpandLess from '@mui/icons-material/ExpandLess';
 import Palette from '@mui/icons-material/Palette';
 import { Checkbox, FormControlLabel, IconButton, Tooltip, useTheme } from '@mui/material';
 
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { overlaySlice, selectIsOverlayEnabled } from '../../store/slices/overlaySlice';
+import { useAppDispatch } from '../../store/hooks';
 import ConfigDropDown from '../configDropDown/configDropDown';
 import OverlayConfig from '../overlayConfig/overlayConfig';
+import { isOverlayEnabledS, useSignal } from 'store/store';
 
 const makeStyles = createMakeStyles({ useTheme });
 const useStyles = makeStyles.makeStyles<{ isMinimized: boolean }>()((theme, props) => {
@@ -38,7 +38,8 @@ const ConfigurationModal: React.FC = () => {
     const [isModalMinimized, setIsModalMinimized] = React.useState(false);
     const { classes } = useStyles({ isMinimized: isModalMinimized });
     const dispatch = useAppDispatch();
-    const isOverlayEnabled = useAppSelector(selectIsOverlayEnabled);
+
+    const isOverlayEnabled = useSignal(isOverlayEnabledS);
     const onDrop = useCallback(
         (acceptedFiles: File[]) => {
             const file = acceptedFiles[0];
@@ -49,7 +50,8 @@ const ConfigurationModal: React.FC = () => {
     const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, accept: { 'image/*': ['.png', '.gif', '.jpeg', '.jpg'] }, noClick: true });
 
     const handleToggleOverlayOnOff = (e: React.ChangeEvent<HTMLInputElement>) => {
-        dispatch(overlaySlice.actions.setOverlayEnabled(e.target.checked));
+        isOverlayEnabledS[1](e.target.checked);
+        // dispatch(overlaySlice.actions.setOverlayEnabled(e.target.checked));
     };
     return (
         <div {...getRootProps()} className={classes.modalRoot} style={{ border: isDragActive ? '3px dashed red' : undefined }}>

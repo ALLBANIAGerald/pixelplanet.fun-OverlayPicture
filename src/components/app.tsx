@@ -3,6 +3,7 @@ import { viewPortEvents } from 'gameInjection/viewport';
 import { webSocketEvents } from 'gameInjection/webSockets/webSocketEvents';
 import React, { useCallback, useEffect, useState } from 'react';
 import { chunkDataSlice } from 'store/slices/chunkDataSlice';
+import { isOverlayEnabledS, useSignal } from 'store/store';
 
 import { loadSavedConfigurations, startProcessingOutputImage, useReadingInputImageProcess } from '../actions/imageProcessing';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
@@ -11,7 +12,6 @@ import {
     overlaySlice,
     selectInputImageData,
     selectInputUrl,
-    selectIsOverlayEnabled,
     selectModifierImageBrightness,
     selectModifierShouldConvertColors,
     selectModifierSmolPixels,
@@ -24,10 +24,8 @@ import {
     selectPageStateCanvasReservedColors,
     selectPageStateCanvasSize,
     selectPageStateCanvasTimeoutOnBaseMs,
-    selectPageStateCanvasViewCenter,
     selectPageStateCurrentSelectedColor,
     selectPageStatePixelWaitDate,
-    selectPageStateViewScale,
     selectPaseStateCanvasTimeoutOnPlacedMs,
     usePageReduxStoreSelector,
 } from '../utils/getPageReduxStore';
@@ -150,7 +148,7 @@ function useWebSocketEvents() {
 
 function useGlobalKeyShortcuts() {
     const dispatch = useAppDispatch();
-    const isOverlayEnabled = useAppSelector(selectIsOverlayEnabled);
+    const isOverlayEnabled = useSignal(isOverlayEnabledS);
     const handleToggleOverlay = useCallback(() => {
         dispatch(overlaySlice.actions.setOverlayEnabled(!isOverlayEnabled));
     }, [dispatch, isOverlayEnabled]);
@@ -261,7 +259,7 @@ const ProviderPageStateMapper: React.FC<React.PropsWithChildren> = ({ children }
 };
 
 const App: React.FC = () => {
-    const isOverlayEnabled = useAppSelector(selectIsOverlayEnabled);
+    const isOverlayEnabled = useSignal(isOverlayEnabledS);
 
     const [isPageLoaded, setIsPageLoaded] = useState(false);
 

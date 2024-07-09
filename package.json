@@ -88,6 +88,7 @@
         "redux": "^4.2.1",
         "redux-persist": "^6.0.0",
         "reselect": "^4.1.7",
+        "signal-polyfill": "^0.1.1",
         "tss-react": "^4.6.0"
     }
 }
