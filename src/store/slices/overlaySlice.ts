@@ -47,7 +47,6 @@ interface OverlayState {
     overlayImage: OverlayImageState;
     placementConfiguration: PlacementConfigurationState;
     modifications: ImageModifiersState;
-    isBotModalVisible: boolean;
     browserWindow: BrowserWindowState;
 }
 
@@ -57,7 +56,6 @@ const initialState: OverlayState = {
     overlayImage: { inputImage: {} },
     placementConfiguration: { yOffset: 0, xOffset: 0, transparency: 92, isFollowMouseActive: false, autoSelectColor: false },
     modifications: { imageBrightness: 0, shouldConvertColors: false, smolPixels: false },
-    isBotModalVisible: false,
     browserWindow: { innerWidth: 100, innerHeight: 100 },
 };
 
