@@ -1,6 +1,9 @@
 import { EventEmitter } from 'events';
 
+import { viewPortTouchClientCoordinatesSignal } from 'gameInjection/viewport';
 import { Signal } from 'signal-polyfill';
+import { selectPageStateHoverPixel, selectPageStateRoundedCanvasViewCenter } from 'utils/getPageReduxStore';
+import { windowInnerSize } from 'utils/signalPrimitives/windowInnerSize';
 
 import { createSelector, createSlice, PayloadAction } from '@reduxjs/toolkit';
 
@@ -12,10 +15,8 @@ export interface Cell {
 }
 
 interface GameGuiState {
-    hoverPixel: Cell;
     viewScale: number;
     viewCenter: Cell;
-    waitDate: Date;
 }
 
 interface CanvasState {
@@ -37,10 +38,8 @@ interface GameState {
 
 const initialState: GameState = {
     gameGui: {
-        hoverPixel: { x: 0, y: 0 },
         viewScale: 1,
         viewCenter: { x: 0, y: 0 },
-        waitDate: new Date(),
     },
     canvas: {
         palette: [],
@@ -59,9 +58,6 @@ export const gameSlice = createSlice({
     initialState,
     name: 'game',
     reducers: {
-        setHoverPixel: (state, action: PayloadAction<Cell>) => {
-            state.gameGui.hoverPixel = action.payload;
-        },
         setPalette: (state, action: PayloadAction<[number, number, number][]>) => {
             state.canvas.palette = action.payload;
         },
@@ -76,9 +72,6 @@ export const gameSlice = createSlice({
         },
         setSelectedColor: (state, action: PayloadAction<number>) => {
             state.canvas.selectedColor = action.payload;
-        },
-        setWaitDate: (state, action: PayloadAction<Date>) => {
-            state.gameGui.waitDate = action.payload;
         },
         setMaxTimeoutMs: (state, action: PayloadAction<number>) => {
             state.canvas.maxTimeoutMs = action.payload;
@@ -98,11 +91,6 @@ export const gameSlice = createSlice({
 export const selectCurrentSelectedColor = createSelector(
     (state: RootState) => state.game.canvas.selectedColor,
     (currentSelectedColor) => currentSelectedColor
-);
-
-export const selectHoverPixel = createSelector(
-    (state: RootState) => state.game.gameGui.hoverPixel,
-    (hoverPixel) => hoverPixel
 );
 
 export const selectCanvasReservedColorCount = createSelector(
@@ -146,11 +134,6 @@ export const selectCanvasLatestPixelReturnCooldownMs = createSelector(
 export const selectCanvasUserPalette = createSelector(selectCanvasReservedColorCount, selectCanvasPalette, (reservedColorCount, palette) => {
     return palette.slice(reservedColorCount);
 });
-
-export const selectWaitDate = createSelector(
-    (state: RootState) => state.game.gameGui.waitDate,
-    (waitDate) => waitDate
-);
 
 export const selectCanvasSize = createSelector(
     (state: RootState) => state.game.canvas.canvasSize,
@@ -241,4 +224,35 @@ const viewScaleNestedSignal = new Signal.Computed(() => {
 export const viewScaleSignal = new Signal.Computed(() => {
     const nested = viewScaleNestedSignal.get();
     return nested.get();
+});
+
+const touchHoverPixelSignal = new Signal.Computed(() => {
+    const { clientX, clientY, timestamp } = viewPortTouchClientCoordinatesSignal.get();
+    const { height, width } = windowInnerSize.get();
+    const viewScale = viewScaleSignal.get();
+    const viewCenter = viewCenterSignal.get();
+    const x = Math.floor((clientX - width / 2) / viewScale + viewCenter.x);
+    const y = Math.floor((clientY - height / 2) / viewScale + viewCenter.y);
+    return { x, y, timestamp };
+});
+
+export const hoverPixelSignal = new Signal.Computed(() => {
+    const touchPixel = touchHoverPixelSignal.get();
+    const pageHover = latestPageHoverPixelState.get();
+    const view = latestRoundedViewCenter.get();
+    const latest = [touchPixel, pageHover, view].sort((a, b) => (b?.timestamp ?? 0) - (a?.timestamp ?? 0))[0];
+    if (!latest) return { x: 0, y: 0 };
+    return { x: latest.x, y: latest.y };
+});
+
+const latestPageHoverPixelState = new Signal.Computed(() => {
+    const p = selectPageStateHoverPixel.get();
+    if (!p) return undefined;
+    return { ...p, timestamp: Date.now() };
+});
+
+const latestRoundedViewCenter = new Signal.Computed(() => {
+    const view = selectPageStateRoundedCanvasViewCenter.get();
+    if (!view) return undefined;
+    return { ...view, timestamp: Date.now() };
 });

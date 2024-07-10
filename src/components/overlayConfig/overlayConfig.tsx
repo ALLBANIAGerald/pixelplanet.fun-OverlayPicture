@@ -1,4 +1,6 @@
 import React, { useEffect } from 'react';
+import { hoverPixelSignal } from 'store/slices/gameSlice';
+import { useSignal } from 'store/store';
 import { makeStyles } from 'theme/makeStyles';
 
 import AttachFile from '@mui/icons-material/AttachFile';
@@ -8,7 +10,6 @@ import { Box, Button, Checkbox, FormControlLabel, IconButton, Slider, TextField,
 import { clearInputImageAction } from '../../actions/imageProcessing';
 import { viewPortEvents } from '../../gameInjection/viewport';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { selectHoverPixel } from '../../store/slices/gameSlice';
 import {
     overlaySlice,
     selectFileName,
@@ -45,7 +46,7 @@ const useStyles = makeStyles()({
 function useFollowMouseConfiguration() {
     const dispatch = useAppDispatch();
     const placementIsFollowMouseActive = useAppSelector(selectPlacementIsFollowMouseActive);
-    const hoverPixel = useAppSelector(selectHoverPixel);
+    const hoverPixel = useSignal(hoverPixelSignal);
 
     useEffect(() => {
         if (placementIsFollowMouseActive) {

@@ -186,30 +186,32 @@ export const selectPageStateCurrentSelectedColor = createSelector(
     (currentSelectedColor) => currentSelectedColor
 );
 
-export const selectPageStateHoverPixel = createSelector(
-    (state: PageState) => state.canvas.hover?.[0],
-    (state: PageState) => state.canvas.hover?.[1],
-    (hoverPixelX, hoverPixelY) => {
-        if (hoverPixelX == null || hoverPixelY == null) return undefined;
-        return { x: hoverPixelX, y: hoverPixelY };
-    }
-);
+export const selectPageStateHoverPixel = new Signal.Computed(() => {
+    const state = latestStateSignal.get();
+    const x = state?.canvas.hover?.[0];
+    const y = state?.canvas.hover?.[1];
+    if (x == null || y == null) return undefined;
+    return { x, y };
+});
 
 export const selectPageStateViewScale = createSelector(
     (state: PageState) => state.canvas.view[2],
     (viewScale) => viewScale
 );
 
-export const selectPageStateCanvasViewCenter = createSelector(
-    (state: PageState) => state.canvas.view[0],
-    (state: PageState) => state.canvas.view[1],
-    (viewX, viewY) => {
-        if (viewX == null || viewY == null) return undefined;
-        return { x: viewX, y: viewY };
-    }
-);
+export const selectPageStateCanvasViewCenter = new Signal.Computed(() => {
+    const state = latestStateSignal.get();
+    const x = state?.canvas.view?.[0];
+    const y = state?.canvas.view?.[1];
+    if (x == null || y == null) return undefined;
+    return { x, y };
+});
 
-export const selectPageStateRoundedCanvasViewCenter = createSelector(selectPageStateCanvasViewCenter, (view) => (view ? { x: Math.round(view.x), y: Math.round(view.y) } : undefined));
+export const selectPageStateRoundedCanvasViewCenter = new Signal.Computed(() => {
+    const view = selectPageStateCanvasViewCenter.get();
+    if (!view) return undefined;
+    return { x: Math.round(view.x), y: Math.round(view.y) };
+});
 
 export const selectPageStateCanvasPalette = createSelector(
     (state: PageState) => state.canvas.palette.abgr,

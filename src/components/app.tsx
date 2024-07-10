@@ -1,14 +1,12 @@
 import type { EventEmitter } from 'events';
-import { viewPortEvents } from 'gameInjection/viewport';
 import { webSocketEvents } from 'gameInjection/webSockets/webSocketEvents';
 import React, { useCallback, useEffect, useState } from 'react';
 import { chunkDataSlice } from 'store/slices/chunkDataSlice';
 import { isOverlayEnabledS, useSignal } from 'store/store';
-import { windowInnerSize } from 'utils/signalPrimitives/windowInnerSize';
 
 import { loadSavedConfigurations, startProcessingOutputImage, useReadingInputImageProcess } from '../actions/imageProcessing';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { gameSlice, selectCanvasUserPalette, viewCenterSignal, viewScaleSignal } from '../store/slices/gameSlice';
+import { gameSlice, selectCanvasUserPalette } from '../store/slices/gameSlice';
 import { selectInputImageData, selectInputUrl, selectModifierImageBrightness, selectModifierShouldConvertColors, selectModifierSmolPixels } from '../store/slices/overlaySlice';
 import {
     selectPageStateCanvasId,
@@ -18,7 +16,6 @@ import {
     selectPageStateCanvasSize,
     selectPageStateCanvasTimeoutOnBaseMs,
     selectPageStateCurrentSelectedColor,
-    selectPageStatePixelWaitDate,
     selectPaseStateCanvasTimeoutOnPlacedMs,
     usePageReduxStoreSelector,
 } from '../utils/getPageReduxStore';
@@ -148,28 +145,7 @@ function useReprocessOutputImage() {
     }, [dispatch, url, palette, modifierShouldConvertColors, modifierImageBrightness, modifierSmolPixels, inputImageData]);
 }
 
-function useAutoHandleTouchInputsToHoverState() {
-    const dispatch = useAppDispatch();
-    const windowSize = useSignal(windowInnerSize);
-    const viewScale = useSignal(viewScaleSignal);
-    const viewCenter = useSignal(viewCenterSignal);
-    useEffect(() => {
-        const handleTouchStart = (event: TouchEvent) => {
-            const touches = event.touches[0];
-            if (!touches) return;
-            const { height, width } = windowSize;
-
-            const { clientX, clientY } = touches;
-            const x = Math.floor((clientX - width / 2) / viewScale + viewCenter.x);
-            const y = Math.floor((clientY - height / 2) / viewScale + viewCenter.y);
-            dispatch(gameSlice.actions.setHoverPixel({ x, y }));
-        };
-        return viewPortEvents.on('touchStartPassive', handleTouchStart);
-    }, [dispatch, windowSize, viewScale, viewCenter]);
-}
-
 const ProviderPageStateMapper: React.FC<React.PropsWithChildren> = ({ children }) => {
-    useAutoHandleTouchInputsToHoverState();
     useReprocessOutputImage();
     useGlobalKeyShortcuts();
     useLoadSavedConfigurations();

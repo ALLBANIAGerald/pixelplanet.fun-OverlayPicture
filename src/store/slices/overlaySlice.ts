@@ -5,7 +5,7 @@ import { createSelector, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { clearInputImageAction, loadSavedConfigurations, setInputImageAction } from '../../actions/imageProcessing';
 import { RootState } from '../store';
 
-import { selectCanvasPalette, selectCanvasReservedColorCount, selectHoverPixel } from './gameSlice';
+import { selectCanvasPalette, selectCanvasReservedColorCount } from './gameSlice';
 
 interface OverlayImageInputState {
     url?: string;

@@ -1,4 +1,5 @@
 import { createNanoEvents } from 'nanoevents';
+import { Signal } from 'signal-polyfill';
 
 import logger from '../handlers/logger';
 
@@ -143,3 +144,21 @@ class Viewport {
 
 const viewport = new Viewport();
 export default viewport;
+
+const handleTouchStart = (event: TouchEvent) => {
+    const touches = event.touches[0];
+    if (!touches) return;
+    const { clientX, clientY } = touches;
+    viewPortTouchClientCoordinatesSignal.set({ clientX, clientY, timestamp: Date.now() });
+};
+
+let viewPortTouchStartPassiveUnsubscribe: (() => void) | undefined;
+export const viewPortTouchClientCoordinatesSignal = new Signal.State(
+    { clientX: 1, clientY: 1, timestamp: 1 },
+    {
+        [Signal.subtle.watched]: () => {
+            viewPortTouchStartPassiveUnsubscribe = viewPortEvents.on('touchStartPassive', handleTouchStart);
+        },
+        [Signal.subtle.unwatched]: () => viewPortTouchStartPassiveUnsubscribe?.(),
+    }
+);

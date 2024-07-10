@@ -1,13 +1,11 @@
 import logger from 'handlers/logger';
-import { Cell, gameSlice } from 'store/slices/gameSlice';
 import { selectCurrentHoverPixelOnOutputImageColorIndexInPalette } from 'store/slices/overlaySlice';
 import { store } from 'store/store';
-import { findPageReduxStore, pageReduxStoreSelectColorAction, selectPageStateHoverPixel, selectPageStateRoundedCanvasViewCenter } from 'utils/getPageReduxStore';
+import { findPageReduxStore, pageReduxStoreSelectColorAction } from 'utils/getPageReduxStore';
 
 export function executeAllHooks(retryCounter = 0) {
     try {
         hookForAutoSelectColor();
-        hookForHoverPixel();
     } catch (error) {
         if (retryCounter > 5) {
             // Something is terribly wrong.
@@ -31,28 +29,6 @@ function hookForAutoSelectColor() {
         if (colorIndex !== undefined && colorIndex !== lastColorIndex) {
             lastColorIndex = colorIndex;
             pageDispatch(pageReduxStoreSelectColorAction(colorIndex));
-        }
-    });
-}
-
-function hookForHoverPixel() {
-    const pageStore = findPageReduxStore();
-    let lastHoverPixel: Cell;
-    pageStore.subscribe(() => {
-        let hoverPixel = selectPageStateHoverPixel(pageStore.getState());
-        if (hoverPixel) {
-            if (hoverPixel !== lastHoverPixel) {
-                lastHoverPixel = hoverPixel;
-                store.dispatch(gameSlice.actions.setHoverPixel(hoverPixel));
-            }
-            return;
-        }
-        hoverPixel = selectPageStateRoundedCanvasViewCenter(pageStore.getState());
-        if (hoverPixel) {
-            if (hoverPixel !== lastHoverPixel) {
-                lastHoverPixel = hoverPixel;
-                store.dispatch(gameSlice.actions.setHoverPixel(hoverPixel));
-            }
         }
     });
 }
