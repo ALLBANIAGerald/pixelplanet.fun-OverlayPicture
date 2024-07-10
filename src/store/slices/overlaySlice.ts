@@ -2,10 +2,10 @@ import colorConverter from 'colorConverter';
 
 import { createSelector, createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-import { clearInputImageAction, clearOutputImageAction, loadSavedConfigurations, setInputImageAction, startProcessingOutputImage } from '../../actions/imageProcessing';
+import { clearInputImageAction, loadSavedConfigurations, setInputImageAction } from '../../actions/imageProcessing';
 import { RootState } from '../store';
 
-import { selectCanvasPalette, selectCanvasReservedColorCount, selectGameViewCenter, selectGameViewScale, selectHoverPixel } from './gameSlice';
+import { selectCanvasPalette, selectCanvasReservedColorCount, selectGameViewScale, selectHoverPixel } from './gameSlice';
 
 interface OverlayImageInputState {
     url?: string;
@@ -89,9 +89,6 @@ export const overlaySlice = createSlice({
         },
         setModifierSmolPixels: (state, action: PayloadAction<boolean>) => {
             state.modifications.smolPixels = action.payload;
-        },
-        setWindowSize: (state, action: PayloadAction<{ innerWidth: number; innerHeight: number }>) => {
-            state.browserWindow = action.payload;
         },
         saveConfiguration: (state, action: PayloadAction<OverlaySavedConfigurationState>) => {
             const savedConfigurations = state.savedConfigs;
@@ -236,14 +233,6 @@ export const selectShouldShowImageFromUrl = createSelector(selectShouldShowImage
 export const selectOverlayImageDataOrUrl = createSelector(selectInputUrl, selectOutputImageData, (url, imageData) => {
     return imageData || url;
 });
-
-export const selectWindowSize = createSelector(
-    (state: RootState) => state.overlay.browserWindow.innerHeight,
-    (state: RootState) => state.overlay.browserWindow.innerWidth,
-    (innerHeight, innerWidth) => {
-        return { innerHeight, innerWidth };
-    }
-);
 
 // leftOffset: window.innerWidth / 2 - (gameState.centerX - placementConfiguration.xOffset) * gameStore.gameState.viewScale,
 // topOffset: window.innerHeight / 2 - (gameState.centerY - placementConfiguration.yOffset) * gameStore.gameState.viewScale,

@@ -1,3 +1,7 @@
+import { EventEmitter } from 'events';
+
+import { Signal } from 'signal-polyfill';
+
 import { createSelector, createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 import { RootState } from '../store';
@@ -60,9 +64,6 @@ export const gameSlice = createSlice({
         },
         setViewScale: (state, action: PayloadAction<number>) => {
             state.gameGui.viewScale = action.payload;
-        },
-        setViewCenter: (state, action: PayloadAction<Cell>) => {
-            state.gameGui.viewCenter = action.payload;
         },
         setPalette: (state, action: PayloadAction<[number, number, number][]>) => {
             state.canvas.palette = action.payload;
@@ -149,11 +150,6 @@ export const selectCanvasUserPalette = createSelector(selectCanvasReservedColorC
     return palette.slice(reservedColorCount);
 });
 
-export const selectGameViewCenter = createSelector(
-    (state: RootState) => state.game.gameGui.viewCenter,
-    (viewCenter) => viewCenter
-);
-
 export const selectGameViewScale = createSelector(
     (state: RootState) => state.game.gameGui.viewScale,
     (viewScale) => viewScale
@@ -168,3 +164,65 @@ export const selectCanvasSize = createSelector(
     (state: RootState) => state.game.canvas.canvasSize,
     (canvasSize) => canvasSize
 );
+
+let definedSetter = false;
+const pixelPlanetEvents = new Signal.State<EventEmitter | undefined>(window.pixelPlanetEvents, {
+    [Signal.subtle.watched]: () => {
+        if (!window.pixelPlanetEvents) {
+            definedSetter = true;
+            Object.defineProperty(window, 'pixelPlanetEvents', {
+                set: (v) => {
+                    definedSetter = false;
+                    // @ts-expect-error workaround if events not initialized yet
+                    delete window.pixelPlanetEvents;
+                    window.pixelPlanetEvents = v;
+                },
+                configurable: true,
+            });
+            return;
+        }
+
+        if (!pixelPlanetEvents.get()) {
+            queueMicrotask(() => {
+                pixelPlanetEvents.set(window.pixelPlanetEvents);
+            });
+        }
+    },
+    [Signal.subtle.unwatched]: () => {
+        if (definedSetter) {
+            // @ts-expect-error workaround if events not initialized yet
+            delete window.pixelPlanetEvents;
+        }
+    },
+});
+
+function createViewCenterSignal(events: EventEmitter) {
+    const processSetViewCoordinates = (viewCenterArray: unknown) => {
+        if (!viewCenterArray) return;
+        if (!Array.isArray(viewCenterArray)) return;
+        if (viewCenterArray.length < 2) return;
+        const x = viewCenterArray[0];
+        const y = viewCenterArray[1];
+        if (typeof x !== 'number' || typeof y !== 'number') return;
+        viewCenter.set({ x, y });
+    };
+    const viewCenter = new Signal.State(
+        { x: 0, y: 0 },
+        {
+            [Signal.subtle.watched]: () => events.on('setviewcoordinates', processSetViewCoordinates),
+            [Signal.subtle.unwatched]: () => events.off('setviewcoordinates', processSetViewCoordinates),
+        }
+    );
+    return viewCenter;
+}
+
+const viewCenterNestedSignal = new Signal.Computed(() => {
+    const events = pixelPlanetEvents.get();
+    if (!events) return new Signal.State({ x: 0, y: 0 });
+    return createViewCenterSignal(events);
+});
+
+export const viewCenterSignal = new Signal.Computed(() => {
+    const nested = viewCenterNestedSignal.get();
+    return nested.get();
+});

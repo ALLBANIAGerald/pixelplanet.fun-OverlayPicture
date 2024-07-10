@@ -4,8 +4,7 @@ import { gameCoordsToScreen } from 'utils/coordConversion';
 
 import { createSelector, createSlice, Dictionary, PayloadAction } from '@reduxjs/toolkit';
 
-import { Cell, selectCanvasSize, selectGameViewCenter, selectGameViewScale } from './gameSlice';
-import { selectWindowSize } from './overlaySlice';
+import { Cell, selectCanvasSize, selectGameViewScale } from './gameSlice';
 
 interface PixelPlacementState {
     pixelsToPlaceQueue: {

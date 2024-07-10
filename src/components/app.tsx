@@ -4,19 +4,12 @@ import { webSocketEvents } from 'gameInjection/webSockets/webSocketEvents';
 import React, { useCallback, useEffect, useState } from 'react';
 import { chunkDataSlice } from 'store/slices/chunkDataSlice';
 import { isOverlayEnabledS, useSignal } from 'store/store';
+import { windowInnerSize } from 'utils/signalPrimitives/windowInnerSize';
 
 import { loadSavedConfigurations, startProcessingOutputImage, useReadingInputImageProcess } from '../actions/imageProcessing';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { gameSlice, selectCanvasUserPalette, selectGameViewCenter, selectGameViewScale } from '../store/slices/gameSlice';
-import {
-    overlaySlice,
-    selectInputImageData,
-    selectInputUrl,
-    selectModifierImageBrightness,
-    selectModifierShouldConvertColors,
-    selectModifierSmolPixels,
-    selectWindowSize,
-} from '../store/slices/overlaySlice';
+import { gameSlice, selectCanvasUserPalette, selectGameViewScale, viewCenterSignal } from '../store/slices/gameSlice';
+import { selectInputImageData, selectInputUrl, selectModifierImageBrightness, selectModifierShouldConvertColors, selectModifierSmolPixels } from '../store/slices/overlaySlice';
 import {
     selectPageStateCanvasId,
     selectPageStateCanvasMaxTimeoutMs,
@@ -73,31 +66,6 @@ function usePageStoreViewScale() {
     // useEffect(() => {
     //     if (pageViewScale) dispatch(gameSlice.actions.setViewScale(pageViewScale));
     // }, [dispatch, pageViewScale]);
-}
-
-function usePageStoreViewCenter() {
-    const dispatch = useAppDispatch();
-    // const pageViewCenter = usePageReduxStoreSelector(selectPageStateCanvasViewCenter);
-
-    useEffect(() => {
-        // Extension events: https://git.pixelplanet.fun/ppfun/pixelplanet/src/branch/master/src/store/middleware/extensions.js
-        const processEvent = (viewCoordinates: number[]) => {
-            if (viewCoordinates.length < 2) return;
-            const x = viewCoordinates[0];
-            const y = viewCoordinates[1];
-            if (typeof x !== 'number' || typeof y !== 'number') return;
-            dispatch(gameSlice.actions.setViewCenter({ x, y }));
-        };
-
-        window.pixelPlanetEvents.on('setviewcoordinates', processEvent);
-        return () => {
-            window.pixelPlanetEvents.off('setviewcoordinates', processEvent);
-        };
-    }, [dispatch]);
-
-    // useEffect(() => {
-    //     if (pageViewCenter) dispatch(gameSlice.actions.setViewCenter(pageViewCenter));
-    // }, [dispatch, pageViewCenter]);
 }
 
 function usePageStoreCanvasPalette() {
@@ -208,30 +176,20 @@ function useReprocessOutputImage() {
     }, [dispatch, url, palette, modifierShouldConvertColors, modifierImageBrightness, modifierSmolPixels, inputImageData]);
 }
 
-function useSubscribeToWindowResize() {
-    const dispatch = useAppDispatch();
-    useEffect(() => {
-        const handleResize = () => dispatch(overlaySlice.actions.setWindowSize({ innerWidth: window.innerWidth, innerHeight: window.innerHeight }));
-        handleResize();
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, [dispatch]);
-}
-
 function useAutoHandleTouchInputsToHoverState() {
     const dispatch = useAppDispatch();
-    const windowSize = useAppSelector(selectWindowSize);
+    const windowSize = useSignal(windowInnerSize);
     const viewScale = useAppSelector(selectGameViewScale);
-    const viewCenter = useAppSelector(selectGameViewCenter);
+    const viewCenter = useSignal(viewCenterSignal);
     useEffect(() => {
         const handleTouchStart = (event: TouchEvent) => {
             const touches = event.touches[0];
             if (!touches) return;
-            const { innerHeight, innerWidth } = windowSize;
+            const { height, width } = windowSize;
 
             const { clientX, clientY } = touches;
-            const x = Math.floor((clientX - innerWidth / 2) / viewScale + viewCenter.x);
-            const y = Math.floor((clientY - innerHeight / 2) / viewScale + viewCenter.y);
+            const x = Math.floor((clientX - width / 2) / viewScale + viewCenter.x);
+            const y = Math.floor((clientY - height / 2) / viewScale + viewCenter.y);
             dispatch(gameSlice.actions.setHoverPixel({ x, y }));
         };
         return viewPortEvents.on('touchStartPassive', handleTouchStart);
@@ -240,14 +198,12 @@ function useAutoHandleTouchInputsToHoverState() {
 
 const ProviderPageStateMapper: React.FC<React.PropsWithChildren> = ({ children }) => {
     useAutoHandleTouchInputsToHoverState();
-    useSubscribeToWindowResize();
     useReprocessOutputImage();
     useGlobalKeyShortcuts();
     useLoadSavedConfigurations();
     usePageStoreWaitDate();
     usePageStoreCurrentSelectedColor();
     usePageStoreViewScale();
-    usePageStoreViewCenter();
     usePageStoreCanvasPalette();
     usePageStoreCanvasReservedColors();
     usePageStoreCanvasId();
