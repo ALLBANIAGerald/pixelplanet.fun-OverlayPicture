@@ -3,17 +3,11 @@ import { placePixel } from 'gameInjection/webSockets/webSocketPixelPlace';
 import logger from 'handlers/logger';
 import { useAsyncInterval } from 'hooks/useInterval';
 import React, { useCallback } from 'react';
-import {
-    selectCanvasLatestPixelReturnCooldownMs,
-    selectCanvasMaxTimeoutMs,
-    selectCanvasSize,
-    selectCanvasTimeoutOnBaseMs,
-    selectCanvasTimeoutOnPlacedMs,
-    selectWaitDate,
-} from 'store/slices/gameSlice';
+import { selectCanvasLatestPixelReturnCooldownMs, selectCanvasMaxTimeoutMs, selectCanvasSize, selectCanvasTimeoutOnBaseMs, selectCanvasTimeoutOnPlacedMs } from 'store/slices/gameSlice';
 import { pixelPlacementSlice, selectPixelPlaceQueueEnabled, selectPixelsToPlaceQueueFirstPixel } from 'store/slices/pixelPlacementSlice';
-import { store } from 'store/store';
+import { store, useSignal } from 'store/store';
 import { gameCoordsToChunk } from 'utils/coordConversion';
+import { selectPageStatePixelWaitDate } from 'utils/getPageReduxStore';
 
 import { Checkbox, FormControlLabel } from '@mui/material';
 
@@ -41,8 +35,8 @@ const TogglePlacementQueue: React.FC = () => {
 
     const canvasSize = useAppSelector(selectCanvasSize);
 
-    const waitDate = useAppSelector(selectWaitDate);
-    const waitUntilMs = waitDate.getTime();
+    const waitDate = useSignal(selectPageStatePixelWaitDate);
+    const waitUntilMs = waitDate?.getTime() ?? Date.now();
     const maxTimeoutMs = useAppSelector(selectCanvasMaxTimeoutMs);
     const timeoutOnBaseMs = useAppSelector(selectCanvasTimeoutOnBaseMs);
     const timeoutOnPlacedMs = useAppSelector(selectCanvasTimeoutOnPlacedMs);

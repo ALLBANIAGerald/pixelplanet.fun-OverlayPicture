@@ -1,6 +1,7 @@
-import logger from 'handlers/logger';
 import { useEffect, useState } from 'react';
 import { AnyAction, Store } from 'redux';
+import { Signal } from 'signal-polyfill';
+import { useSignal } from 'store/store';
 
 import { createSelector } from '@reduxjs/toolkit';
 
@@ -12,7 +13,7 @@ function isStoreFromRedux(store: any) {
     return true;
 }
 
-function getStoreFromReactInternalEl(el: any) {
+function getStoreFromReactInternalEl(el: any): Store<PageState, AnyAction> | undefined {
     if (el.tag !== 0 || !el.child) return undefined;
     if (el.child.tag !== 10) return undefined;
     if (!el.child.memoizedProps) return undefined;
@@ -30,7 +31,7 @@ function findReactRootContainerEl() {
 
 function findStoreInRoot(el: HTMLElement) {
     const reactContainerName = Object.keys(el).filter((k) => k.startsWith('__reactContainer'))[0];
-    if (!reactContainerName) throw new Error("couldn't find internal react root");
+    if (!reactContainerName) return undefined;
 
     const root = (el as any)[reactContainerName];
     let checkedReactInternalElement = root;
@@ -50,6 +51,66 @@ export function findPageReduxStore(): Store<PageState, AnyAction> {
     return store;
 }
 
+const reactRootEl = findReactRootContainerEl();
+if (!reactRootEl) {
+    const observer = new MutationObserver(() => {
+        const rootEl = findReactRootContainerEl();
+        if (rootEl) {
+            observer.disconnect();
+            reactRootElSignal.set(rootEl);
+        }
+    });
+    observer.observe(document, { subtree: true });
+}
+const reactRootElSignal = new Signal.State(reactRootEl);
+
+function createPageReduxStoreSignal(rootEl: HTMLElement) {
+    let observer: MutationObserver | undefined;
+    const pageReduxStoreSignal = new Signal.State<{ type: 'success'; store: Store<PageState, AnyAction> } | { type: 'loading' } | { type: 'error'; error: 'window not accessible' }>(
+        { type: 'loading' },
+        {
+            [Signal.subtle.watched]: () => {
+                const store = findStoreInRoot(rootEl);
+                if (store) {
+                    pageReduxStoreSignal.set({ type: 'success', store });
+                    return;
+                }
+                if (rootEl.childElementCount === 0) {
+                    // React has not loaded yet, wait for React to initialize
+                    observer = new MutationObserver(() => {
+                        if (rootEl) {
+                            const foundStore = findStoreInRoot(rootEl);
+                            if (!foundStore) return;
+                            observer?.disconnect();
+                            pageReduxStoreSignal.set({ type: 'success', store: foundStore });
+                        }
+                    });
+                    observer.observe(rootEl, { subtree: true });
+                } else {
+                    // We probably don't have direct access page's `window` instance
+                    pageReduxStoreSignal.set({ type: 'error', error: 'window not accessible' });
+                }
+            },
+            [Signal.subtle.unwatched]: () => {
+                observer?.disconnect();
+                observer = undefined;
+            },
+        }
+    );
+    return pageReduxStoreSignal;
+}
+
+const pageReduxStoreNestedSignal = new Signal.Computed(() => {
+    const rootEl = reactRootElSignal.get();
+    if (!rootEl) return new Signal.Computed(() => ({ type: 'loading' } as const));
+    return createPageReduxStoreSignal(rootEl);
+});
+
+export const pageReduxStoreSignal = new Signal.Computed(() => {
+    const nested = pageReduxStoreNestedSignal.get();
+    return nested.get();
+});
+
 interface TypedUseSelectorHookWithUndefined<TState> {
     <TSelected>(selector: (state: TState) => TSelected, equalityFn?: (left: TSelected, right: TSelected) => boolean): TSelected | undefined;
 }
@@ -58,15 +119,15 @@ interface TypedUseSelectorHookWithUndefined<TState> {
  * Hacky useSelector hook to work for the custom page store
  */
 export const usePageReduxStoreSelector: TypedUseSelectorHookWithUndefined<PageState> = (selector) => {
-    const store = usePageReduxStore();
+    const store = useSignal(pageReduxStoreSignal);
     const [selectedResult, setSelectedResult] = useState<ReturnType<typeof selector>>();
     useEffect(() => {
-        if (!store) return undefined;
+        if (store.type !== 'success') return undefined;
 
-        setSelectedResult(selector(store.getState()));
+        setSelectedResult(selector(store.store.getState()));
 
-        const unsubscribe = store.subscribe(() => {
-            setSelectedResult(selector(store.getState()));
+        const unsubscribe = store.store.subscribe(() => {
+            setSelectedResult(selector(store.store.getState()));
         });
 
         return () => unsubscribe();
@@ -75,9 +136,9 @@ export const usePageReduxStoreSelector: TypedUseSelectorHookWithUndefined<PageSt
 };
 
 export const usePageReduxStoreDispatch = () => {
-    const store = usePageReduxStore();
-    if (!store) return undefined;
-    return store.dispatch;
+    const store = useSignal(pageReduxStoreSignal);
+    if (store.type !== 'success') return undefined;
+    return store.store.dispatch;
 };
 
 export function pageReduxStoreSelectColorAction(colorIndex: number) {
@@ -94,29 +155,31 @@ export function setViewCoordinates(view: [number, number]) {
     };
 }
 
-function usePageReduxStore() {
-    const [pageReduxStore, setPageReduxStore] = useState<Store<PageState, AnyAction>>();
-    useEffect(() => {
-        let timeout: number | undefined;
-        try {
-            setPageReduxStore(findPageReduxStore());
-        } catch (error) {
-            logger.log('Error while finding redux store', error, 'retrying in 1 second');
-            timeout = setTimeout(() => {
-                setPageReduxStore(findPageReduxStore());
-            }, 1000);
-        }
-        return () => {
-            if (timeout) clearTimeout(timeout);
-        };
-    }, [setPageReduxStore]);
-    return pageReduxStore;
+function createLatestStateSignal(store: Store<PageState, AnyAction>) {
+    let unsub: (() => void) | undefined;
+    const latestState = new Signal.State<PageState | undefined>(undefined, {
+        [Signal.subtle.watched]: () => {
+            unsub = store.subscribe(() => {
+                latestState.set(store.getState());
+            });
+        },
+        [Signal.subtle.unwatched]: () => unsub?.(),
+    });
+    return latestState;
 }
 
-export const selectPageStatePixelWaitDate = createSelector(
-    (state: PageState) => state.user.wait,
-    (pixelWaitDate) => pixelWaitDate
-);
+const latestStateNestedSignal = new Signal.Computed(() => {
+    const store = pageReduxStoreSignal.get();
+    if (store.type !== 'success') return new Signal.Computed<PageState | undefined>(() => undefined);
+    return createLatestStateSignal(store.store);
+});
+
+const latestStateSignal = new Signal.Computed(() => {
+    const nested = latestStateNestedSignal.get();
+    return nested.get();
+});
+
+export const selectPageStatePixelWaitDate = new Signal.Computed(() => latestStateSignal.get()?.user.wait);
 
 export const selectPageStateCurrentSelectedColor = createSelector(
     (state: PageState) => state.canvas.selectedColor,

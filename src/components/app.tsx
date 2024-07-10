@@ -32,15 +32,6 @@ declare global {
     }
 }
 
-function usePageStoreWaitDate() {
-    const dispatch = useAppDispatch();
-    const waitDate = usePageReduxStoreSelector(selectPageStatePixelWaitDate);
-    useEffect(() => {
-        if (waitDate) dispatch(gameSlice.actions.setWaitDate(waitDate));
-        else dispatch(gameSlice.actions.setWaitDate(new Date()));
-    }, [dispatch, waitDate]);
-}
-
 function usePageStoreCurrentSelectedColor() {
     const dispatch = useAppDispatch();
     const currentSelectedColor = usePageReduxStoreSelector(selectPageStateCurrentSelectedColor);
@@ -182,7 +173,6 @@ const ProviderPageStateMapper: React.FC<React.PropsWithChildren> = ({ children }
     useReprocessOutputImage();
     useGlobalKeyShortcuts();
     useLoadSavedConfigurations();
-    usePageStoreWaitDate();
     usePageStoreCurrentSelectedColor();
     usePageStoreCanvasPalette();
     usePageStoreCanvasReservedColors();
@@ -206,7 +196,7 @@ const App: React.FC = () => {
         setIsPageLoaded(true);
     }, [palette]);
 
-    if (!isPageLoaded) return <>Waiting for page to load</>;
+    if (!isPageLoaded) return null;
 
     return (
         <div>
