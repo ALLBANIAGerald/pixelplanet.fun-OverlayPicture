@@ -147,11 +147,10 @@ function useWebSocketEvents() {
 }
 
 function useGlobalKeyShortcuts() {
-    const dispatch = useAppDispatch();
     const isOverlayEnabled = useSignal(isOverlayEnabledS);
     const handleToggleOverlay = useCallback(() => {
-        dispatch(overlaySlice.actions.setOverlayEnabled(!isOverlayEnabled));
-    }, [dispatch, isOverlayEnabled]);
+        isOverlayEnabledS[1](!isOverlayEnabled);
+    }, [isOverlayEnabled]);
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
             const { target } = event;

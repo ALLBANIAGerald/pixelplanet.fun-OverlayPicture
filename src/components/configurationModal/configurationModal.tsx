@@ -2,7 +2,9 @@ import { setInputImageAction } from 'actions/imageProcessing';
 import { get as getColor, to as toColor } from 'color-string';
 import React, { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
+import { isOverlayEnabledS, useSignal } from 'store/store';
 import { createMakeStyles } from 'tss-react';
+
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import Palette from '@mui/icons-material/Palette';
 import { Checkbox, FormControlLabel, IconButton, Tooltip, useTheme } from '@mui/material';
@@ -10,7 +12,6 @@ import { Checkbox, FormControlLabel, IconButton, Tooltip, useTheme } from '@mui/
 import { useAppDispatch } from '../../store/hooks';
 import ConfigDropDown from '../configDropDown/configDropDown';
 import OverlayConfig from '../overlayConfig/overlayConfig';
-import { isOverlayEnabledS, useSignal } from 'store/store';
 
 const makeStyles = createMakeStyles({ useTheme });
 const useStyles = makeStyles.makeStyles<{ isMinimized: boolean }>()((theme, props) => {
@@ -51,7 +52,6 @@ const ConfigurationModal: React.FC = () => {
 
     const handleToggleOverlayOnOff = (e: React.ChangeEvent<HTMLInputElement>) => {
         isOverlayEnabledS[1](e.target.checked);
-        // dispatch(overlaySlice.actions.setOverlayEnabled(e.target.checked));
     };
     return (
         <div {...getRootProps()} className={classes.modalRoot} style={{ border: isDragActive ? '3px dashed red' : undefined }}>
