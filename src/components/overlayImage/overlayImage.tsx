@@ -1,9 +1,10 @@
 import colorConverter from 'colorConverter';
 import React, { startTransition, useEffect, useRef } from 'react';
 import { selectMainCanvasTopLeftScreenCoords, selectPixelsToPlaceBySplitRenderCanvasId, selectPixelsToPlaceRenderCanvasIds, selectRenderCanvasCoords } from 'store/slices/pixelPlacementSlice';
+import { useSignal } from 'store/store';
 
 import { useAppSelector } from '../../store/hooks';
-import { selectCanvasPalette, selectCanvasSize, selectGameViewScale } from '../../store/slices/gameSlice';
+import { selectCanvasPalette, selectCanvasSize, viewScaleSignal } from '../../store/slices/gameSlice';
 import {
     selectInputFile,
     selectInputUrl,
@@ -91,7 +92,7 @@ const PixelQueueSplitCanvas: React.FC<{ splitRenderCanvasId: number }> = (props)
 
 const PlaceQueuePixels: React.FC = () => {
     const { classes } = useStyles();
-    const viewScale = useAppSelector(selectGameViewScale);
+    const viewScale = useSignal(viewScaleSignal);
     const renderCanvasIds = useAppSelector(selectPixelsToPlaceRenderCanvasIds);
     const canvasTopLeftOnScreen = useAppSelector(selectMainCanvasTopLeftScreenCoords);
 
@@ -117,7 +118,7 @@ const OverlayImageCanvas: React.FC = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const { leftOffset, topOffset } = useAppSelector(selectOverlayOffsetCoordsOnScreen);
     const opacity = useAppSelector(selectPlacementTransparency) / 100;
-    const viewScale = useAppSelector(selectGameViewScale);
+    const viewScale = useSignal(viewScaleSignal);
     const modifierSmolPixels = useAppSelector(selectModifierSmolPixels);
     const canvasScaleModifier = modifierSmolPixels ? 1 / 3 : 1;
 
@@ -172,7 +173,7 @@ const OverlayImageImg: React.FC = () => {
     const { classes } = useStyles();
     const { leftOffset, topOffset } = useAppSelector(selectOverlayOffsetCoordsOnScreen);
     const opacity = useAppSelector(selectPlacementTransparency) / 100;
-    const viewScale = useAppSelector(selectGameViewScale);
+    const viewScale = useSignal(viewScaleSignal);
 
     if (!imageUrl) return <div>missing image url</div>;
 

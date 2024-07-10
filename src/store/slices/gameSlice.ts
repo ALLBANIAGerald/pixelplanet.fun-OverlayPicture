@@ -62,9 +62,6 @@ export const gameSlice = createSlice({
         setHoverPixel: (state, action: PayloadAction<Cell>) => {
             state.gameGui.hoverPixel = action.payload;
         },
-        setViewScale: (state, action: PayloadAction<number>) => {
-            state.gameGui.viewScale = action.payload;
-        },
         setPalette: (state, action: PayloadAction<[number, number, number][]>) => {
             state.canvas.palette = action.payload;
         },
@@ -150,11 +147,6 @@ export const selectCanvasUserPalette = createSelector(selectCanvasReservedColorC
     return palette.slice(reservedColorCount);
 });
 
-export const selectGameViewScale = createSelector(
-    (state: RootState) => state.game.gameGui.viewScale,
-    (viewScale) => viewScale
-);
-
 export const selectWaitDate = createSelector(
     (state: RootState) => state.game.gameGui.waitDate,
     (waitDate) => waitDate
@@ -224,5 +216,29 @@ const viewCenterNestedSignal = new Signal.Computed(() => {
 
 export const viewCenterSignal = new Signal.Computed(() => {
     const nested = viewCenterNestedSignal.get();
+    return nested.get();
+});
+
+function createViewScaleSignal(events: EventEmitter) {
+    const processSetScale = (scale: unknown) => {
+        if (!scale) return;
+        if (typeof scale !== 'number') return;
+        scaleS.set(scale);
+    };
+    const scaleS = new Signal.State(1, {
+        [Signal.subtle.watched]: () => events.on('setscale', processSetScale),
+        [Signal.subtle.unwatched]: () => events.off('setscale', processSetScale),
+    });
+    return scaleS;
+}
+
+const viewScaleNestedSignal = new Signal.Computed(() => {
+    const events = pixelPlanetEvents.get();
+    if (!events) return new Signal.State(1);
+    return createViewScaleSignal(events);
+});
+
+export const viewScaleSignal = new Signal.Computed(() => {
+    const nested = viewScaleNestedSignal.get();
     return nested.get();
 });

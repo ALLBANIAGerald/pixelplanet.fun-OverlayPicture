@@ -8,7 +8,7 @@ import { windowInnerSize } from 'utils/signalPrimitives/windowInnerSize';
 
 import { loadSavedConfigurations, startProcessingOutputImage, useReadingInputImageProcess } from '../actions/imageProcessing';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { gameSlice, selectCanvasUserPalette, selectGameViewScale, viewCenterSignal } from '../store/slices/gameSlice';
+import { gameSlice, selectCanvasUserPalette, viewCenterSignal, viewScaleSignal } from '../store/slices/gameSlice';
 import { selectInputImageData, selectInputUrl, selectModifierImageBrightness, selectModifierShouldConvertColors, selectModifierSmolPixels } from '../store/slices/overlaySlice';
 import {
     selectPageStateCanvasId,
@@ -47,25 +47,6 @@ function usePageStoreCurrentSelectedColor() {
     useEffect(() => {
         if (currentSelectedColor) dispatch(gameSlice.actions.setSelectedColor(currentSelectedColor));
     }, [dispatch, currentSelectedColor]);
-}
-
-function usePageStoreViewScale() {
-    const dispatch = useAppDispatch();
-    // const pageViewScale = usePageReduxStoreSelector(selectPageStateViewScale);
-
-    useEffect(() => {
-        // Extension events: https://git.pixelplanet.fun/ppfun/pixelplanet/src/branch/master/src/store/middleware/extensions.js
-        const processEvent = (scale: number) => dispatch(gameSlice.actions.setViewScale(scale));
-
-        window.pixelPlanetEvents.on('setscale', processEvent);
-        return () => {
-            window.pixelPlanetEvents.off('setscale', processEvent);
-        };
-    }, [dispatch]);
-
-    // useEffect(() => {
-    //     if (pageViewScale) dispatch(gameSlice.actions.setViewScale(pageViewScale));
-    // }, [dispatch, pageViewScale]);
 }
 
 function usePageStoreCanvasPalette() {
@@ -179,7 +160,7 @@ function useReprocessOutputImage() {
 function useAutoHandleTouchInputsToHoverState() {
     const dispatch = useAppDispatch();
     const windowSize = useSignal(windowInnerSize);
-    const viewScale = useAppSelector(selectGameViewScale);
+    const viewScale = useSignal(viewScaleSignal);
     const viewCenter = useSignal(viewCenterSignal);
     useEffect(() => {
         const handleTouchStart = (event: TouchEvent) => {
@@ -203,7 +184,6 @@ const ProviderPageStateMapper: React.FC<React.PropsWithChildren> = ({ children }
     useLoadSavedConfigurations();
     usePageStoreWaitDate();
     usePageStoreCurrentSelectedColor();
-    usePageStoreViewScale();
     usePageStoreCanvasPalette();
     usePageStoreCanvasReservedColors();
     usePageStoreCanvasId();
