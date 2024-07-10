@@ -92,9 +92,6 @@ export const overlaySlice = createSlice({
         setModifierSmolPixels: (state, action: PayloadAction<boolean>) => {
             state.modifications.smolPixels = action.payload;
         },
-        setOverlayEnabled: (state, action: PayloadAction<boolean>) => {
-            state.overlayEnabled = action.payload;
-        },
         setWindowSize: (state, action: PayloadAction<{ innerWidth: number; innerHeight: number }>) => {
             state.browserWindow = action.payload;
         },
