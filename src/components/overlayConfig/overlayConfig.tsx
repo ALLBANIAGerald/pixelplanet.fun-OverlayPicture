@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { hoverPixelSignal } from 'store/slices/gameSlice';
-import { useSignal } from 'store/store';
+import { useSignal } from 'store/useSignal';
 import { makeStyles } from 'theme/makeStyles';
 
 import AttachFile from '@mui/icons-material/AttachFile';

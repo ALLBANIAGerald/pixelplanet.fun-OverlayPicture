@@ -4,7 +4,8 @@ import logger from 'handlers/logger';
 import { useAsyncInterval } from 'hooks/useInterval';
 import React, { useCallback } from 'react';
 import { pixelPlacementSlice, selectPixelPlaceQueueEnabled, selectPixelsToPlaceQueueFirstPixel } from 'store/slices/pixelPlacementSlice';
-import { store, useSignal } from 'store/store';
+import { store } from 'store/store';
+import { useSignal } from 'store/useSignal';
 import { gameCoordsToChunk } from 'utils/coordConversion';
 import {
     selectPageStateCanvasMaxTimeoutMs,

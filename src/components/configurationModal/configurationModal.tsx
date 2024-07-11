@@ -2,7 +2,8 @@ import { setInputImageAction } from 'actions/imageProcessing';
 import { get as getColor, to as toColor } from 'color-string';
 import React, { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { isOverlayEnabledS, useSignal } from 'store/store';
+import { isOverlayEnabledS } from 'store/slices/overlaySlice';
+import { useSignal } from 'store/useSignal';
 import { createMakeStyles } from 'tss-react';
 
 import ExpandLess from '@mui/icons-material/ExpandLess';

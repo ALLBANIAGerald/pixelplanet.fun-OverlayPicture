@@ -2,12 +2,12 @@ import type { EventEmitter } from 'events';
 import { webSocketEvents } from 'gameInjection/webSockets/webSocketEvents';
 import React, { useCallback, useEffect, useState } from 'react';
 import { chunkDataSlice } from 'store/slices/chunkDataSlice';
-import { isOverlayEnabledS, useSignal } from 'store/store';
+import { useSignal } from 'store/useSignal';
 
 import { loadSavedConfigurations, startProcessingOutputImage, useReadingInputImageProcess } from '../actions/imageProcessing';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { selectCanvasUserPalette } from '../store/slices/gameSlice';
-import { selectInputImageData, selectInputUrl, selectModifierImageBrightness, selectModifierShouldConvertColors, selectModifierSmolPixels } from '../store/slices/overlaySlice';
+import { isOverlayEnabledS, selectInputImageData, selectInputUrl, selectModifierImageBrightness, selectModifierShouldConvertColors, selectModifierSmolPixels } from '../store/slices/overlaySlice';
 import { selectPageStateCanvasPalette } from '../utils/getPageReduxStore';
 
 import ConfigurationModal from './configurationModal/configurationModal';

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AnyAction, Store } from 'redux';
 import { Signal } from 'signal-polyfill';
-import { useSignal } from 'store/store';
+import { useSignal } from 'store/useSignal';
 
 import { createSelector } from '@reduxjs/toolkit';
 

@@ -1,4 +1,10 @@
 import colorConverter from 'colorConverter';
+import logger from 'handlers/logger';
+import localforage from 'localforage';
+import { useEffect, useState } from 'react';
+import { Signal } from 'signal-polyfill';
+import { effect } from 'store/effect';
+import { getStoredValue } from 'store/getStoredData';
 import { selectPageStateCanvasPalette, selectPageStateCanvasReservedColors } from 'utils/getPageReduxStore';
 import { windowInnerSize } from 'utils/signalPrimitives/windowInnerSize';
 
@@ -307,3 +313,38 @@ export const selectCurrentStateAsConfiguration = createSelector(
         };
     }
 );
+
+const signalsStorage = localforage.createInstance({ name: 'picture_overlay', storeName: 'signals' });
+export const isOverlayEnabledS = persistedSignal(true, 'isOverlayEnabled', (o) => o.overlayEnabled);
+
+export type StoredSignal<T> = [Signal.Computed<T>, (newValue: T) => void];
+
+function persistedSignal<T = unknown>(initialValue: T, key: string, mapOld?: (old: RootState['overlay']) => T): StoredSignal<T> {
+    const signal = new Signal.State(initialValue);
+    let initialized = false;
+    signalsStorage
+        .getItem<T>(key)
+        .then((stored) => {
+            if (stored === null && mapOld) return getStoredValue(mapOld);
+            return stored;
+        })
+        .then((stored) => {
+            if (stored == null) return;
+            if (!initialized) signal.set(stored);
+        })
+        .catch((e) => logger.log('failed to get persisted signal value', signal, e))
+        .finally(() => {
+            initialized = true;
+        });
+
+    const c = new Signal.Computed(() => {
+        const value = signal.get();
+        if (value !== initialValue && !initialized) {
+            initialized = true;
+            signalsStorage.setItem(key, value);
+        } else if (initialized) signalsStorage.setItem(key, value);
+        return value;
+    });
+
+    return [c, (newValue: T) => signal.set(newValue)];
+}

@@ -1,7 +1,7 @@
 import colorConverter from 'colorConverter';
 import React, { startTransition, useEffect, useRef } from 'react';
 import { selectMainCanvasTopLeftScreenCoords, selectPixelsToPlaceBySplitRenderCanvasId, selectPixelsToPlaceRenderCanvasIds, selectRenderCanvasCoords } from 'store/slices/pixelPlacementSlice';
-import { useSignal } from 'store/store';
+import { useSignal } from 'store/useSignal';
 import { selectPageStateCanvasPalette, selectPageStateCanvasSize } from 'utils/getPageReduxStore';
 
 import { useAppSelector } from '../../store/hooks';
