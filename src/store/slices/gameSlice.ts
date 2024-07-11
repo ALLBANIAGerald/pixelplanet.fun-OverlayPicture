@@ -36,11 +36,11 @@ const pixelPlanetEvents = new Signal.State<EventEmitter | undefined>(window.pixe
             return;
         }
 
-        if (!pixelPlanetEvents.get()) {
-            queueMicrotask(() => {
+        queueMicrotask(() => {
+            if (!pixelPlanetEvents.get()) {
                 pixelPlanetEvents.set(window.pixelPlanetEvents);
-            });
-        }
+            }
+        });
     },
     [Signal.subtle.unwatched]: () => {
         if (definedSetter) {
