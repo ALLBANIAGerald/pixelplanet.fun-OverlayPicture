@@ -10,6 +10,6 @@ export function useSignal<T>(signal: Signal.Computed<T> | Signal.State<T> | Stor
         return effect(() => {
             setS(Array.isArray(signal) ? signal[0].get() : signal.get());
         });
-    });
+    }, [signal]);
     return s;
 }
