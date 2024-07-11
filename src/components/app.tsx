@@ -28,14 +28,6 @@ declare global {
     }
 }
 
-function usePageStoreCurrentSelectedColor() {
-    const dispatch = useAppDispatch();
-    const currentSelectedColor = usePageReduxStoreSelector(selectPageStateCurrentSelectedColor);
-    useEffect(() => {
-        if (currentSelectedColor) dispatch(gameSlice.actions.setSelectedColor(currentSelectedColor));
-    }, [dispatch, currentSelectedColor]);
-}
-
 function usePageStoreCanvasId() {
     const dispatch = useAppDispatch();
     const canvasId = usePageReduxStoreSelector(selectPageStateCanvasId);
@@ -132,7 +124,6 @@ const ProviderPageStateMapper: React.FC<React.PropsWithChildren> = ({ children }
     useReprocessOutputImage();
     useGlobalKeyShortcuts();
     useLoadSavedConfigurations();
-    usePageStoreCurrentSelectedColor();
     usePageStoreCanvasId();
     useWebSocketEvents();
     useReadingInputImageProcess();

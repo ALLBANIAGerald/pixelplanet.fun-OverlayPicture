@@ -181,10 +181,10 @@ const latestStateSignal = new Signal.Computed(() => {
 
 export const selectPageStatePixelWaitDate = new Signal.Computed(() => latestStateSignal.get()?.user.wait);
 
-export const selectPageStateCurrentSelectedColor = createSelector(
-    (state: PageState) => state.canvas.selectedColor,
-    (currentSelectedColor) => currentSelectedColor
-);
+export const selectPageStateCurrentSelectedColor = new Signal.Computed(() => {
+    const state = latestStateSignal.get();
+    return state?.canvas.selectedColor ?? 0;
+});
 
 export const selectPageStateHoverPixel = new Signal.Computed(() => {
     const state = latestStateSignal.get();

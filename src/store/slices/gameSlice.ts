@@ -22,7 +22,6 @@ interface GameGuiState {
 interface CanvasState {
     id: number;
     canvasSize: number;
-    selectedColor: number;
     maxTimeoutMs: number;
     timeoutOnBaseMs: number;
     timeoutOnPlacedMs: number;
@@ -42,7 +41,6 @@ const initialState: GameState = {
     canvas: {
         id: 0,
         canvasSize: 1,
-        selectedColor: 0,
         maxTimeoutMs: 100,
         timeoutOnBaseMs: 100,
         timeoutOnPlacedMs: 100,
@@ -60,9 +58,6 @@ export const gameSlice = createSlice({
         setCanvasSize: (state, action: PayloadAction<number>) => {
             state.canvas.canvasSize = action.payload;
         },
-        setSelectedColor: (state, action: PayloadAction<number>) => {
-            state.canvas.selectedColor = action.payload;
-        },
         setMaxTimeoutMs: (state, action: PayloadAction<number>) => {
             state.canvas.maxTimeoutMs = action.payload;
         },
@@ -77,11 +72,6 @@ export const gameSlice = createSlice({
         },
     },
 });
-
-export const selectCurrentSelectedColor = createSelector(
-    (state: RootState) => state.game.canvas.selectedColor,
-    (currentSelectedColor) => currentSelectedColor
-);
 
 export const selectCanvasId = createSelector(
     (state: RootState) => state.game.canvas.id,
