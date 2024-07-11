@@ -1,8 +1,8 @@
-import { pixelUpdatePacket } from 'gameInjection/webSockets/packets/pixelUpdate';
-import { RootState } from 'store/store';
-import { selectPageStateCanvasId } from 'utils/getPageReduxStore';
+import { PixelUpdateData } from '../../gameInjection/webSockets/packets/pixelUpdate';
+import { RootState } from '../../store/store';
+import { selectPageStateCanvasId } from '../../utils/getPageReduxStore';
 
-import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 
 type ChunkData =
     | {
@@ -29,10 +29,26 @@ export const chunkDataSlice = createSlice({
     initialState,
     name: 'chunkData',
     reducers: {
-        addChunk: (state, action: PayloadAction<ChunkDataState['chunks'][0]>) => {
+        addChunk: (
+            state,
+            action: {
+                payload: ChunkData;
+                type: string;
+            }
+        ) => {
             state.chunks.push(action.payload);
         },
-        setPixel: (state, action: PayloadAction<ReturnType<typeof pixelUpdatePacket.hydrate>>) => {
+        setPixel: (
+            state,
+            action: {
+                payload: {
+                    chunkX: number;
+                    chunkY: number;
+                    pixels: PixelUpdateData[];
+                };
+                type: string;
+            }
+        ) => {
             const { chunkX, chunkY, pixels } = action.payload;
             const chunk = state.chunks.find((x) => x.chunkX === chunkX && x.chunkY === chunkY);
             if (!chunk || chunk.fetching) return;

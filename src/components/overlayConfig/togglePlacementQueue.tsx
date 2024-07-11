@@ -1,19 +1,19 @@
-import { PixelUpdateReturnCode } from 'gameInjection/webSockets/packets/pixelReturn';
-import { latestPixelReturnCooldownMsSignal, placePixel } from 'gameInjection/webSockets/webSocketPixelPlace';
-import logger from 'handlers/logger';
-import { useAsyncInterval } from 'hooks/useInterval';
+import { PixelUpdateReturnCode } from '../../gameInjection/webSockets/packets/pixelReturn';
+import { latestPixelReturnCooldownMsSignal, placePixel } from '../../gameInjection/webSockets/webSocketPixelPlace';
+import logger from '../../handlers/logger';
+import { useAsyncInterval } from '../../hooks/useInterval';
 import React, { useCallback } from 'react';
-import { pixelPlacementSlice, selectPixelPlaceQueueEnabled, selectPixelsToPlaceQueueFirstPixel } from 'store/slices/pixelPlacementSlice';
-import { store } from 'store/store';
-import { useSignal } from 'store/useSignal';
-import { gameCoordsToChunk } from 'utils/coordConversion';
+import { pixelPlacementSlice, selectPixelPlaceQueueEnabled, selectPixelsToPlaceQueueFirstPixel } from '../../store/slices/pixelPlacementSlice';
+import { store } from '../../store/store';
+import { useSignal } from '../../store/useSignal';
+import { gameCoordsToChunk } from '../../utils/coordConversion';
 import {
     selectPageStateCanvasMaxTimeoutMs,
     selectPageStateCanvasSize,
     selectPageStateCanvasTimeoutOnBaseMs,
     selectPageStatePixelWaitDate,
     selectPaseStateCanvasTimeoutOnPlacedMs,
-} from 'utils/getPageReduxStore';
+} from '../../utils/getPageReduxStore';
 
 import { Checkbox, FormControlLabel } from '@mui/material';
 

@@ -44,12 +44,12 @@ async function loadImageDrawOnCanvasGetData(url: string, abortSignal: AbortSigna
                 // If somehow we fail on second try, let's not loop again
                 if (!window.location.protocol.startsWith('http')) reject(error);
                 // security error, cors request failed, let's try fetching the image data
-                fetch(url, { signal: abortSignal })
+                void fetch(url, { signal: abortSignal })
                     .then((response) => response.blob())
                     .then((blob) => new File([blob], 'image.png', { type: 'image/png' }))
                     .then((file) =>
                         loadImageDrawOnCanvasGetData(URL.createObjectURL(file), abortSignal) //
-                            .finally(() => URL.revokeObjectURL(url))
+                            .finally(() => { URL.revokeObjectURL(url); })
                     )
                     .then(resolve);
             }

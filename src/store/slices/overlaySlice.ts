@@ -1,12 +1,12 @@
-import colorConverter from 'colorConverter';
-import logger from 'handlers/logger';
+import colorConverter from '../../colorConverter';
+import logger from '../../handlers/logger';
 import localforage from 'localforage';
 import { useEffect, useState } from 'react';
 import { Signal } from 'signal-polyfill';
-import { effect } from 'store/effect';
-import { getStoredValue } from 'store/getStoredData';
-import { selectPageStateCanvasPalette, selectPageStateCanvasReservedColors } from 'utils/getPageReduxStore';
-import { windowInnerSize } from 'utils/signalPrimitives/windowInnerSize';
+import { effect } from '../../store/effect';
+import { getStoredValue } from '../../store/getStoredData';
+import { selectPageStateCanvasPalette, selectPageStateCanvasReservedColors } from '../../utils/getPageReduxStore';
+import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
 
 import { createSelector, createSlice, PayloadAction } from '@reduxjs/toolkit';
 
@@ -314,7 +314,7 @@ export const selectCurrentStateAsConfiguration = createSelector(
     }
 );
 
-type OverlayImage = {
+interface OverlayImage {
     id: number;
     enabled: boolean;
     title: string;
@@ -343,7 +343,7 @@ type OverlayImage = {
         width: number;
         height: number;
     };
-};
+}
 
 // store OverlayImage[] in indexedDb.
 // TODO migrate old saved data, make everything but current "disabled"
@@ -371,7 +371,7 @@ function persistedSignal<T = unknown>(initialValue: T, key: string, mapOld?: (ol
             if (stored == null) return;
             if (!initialized) signal.set(stored);
         })
-        .catch((e) => logger.log('failed to get persisted signal value', signal, e))
+        .catch((e) => { logger.log('failed to get persisted signal value', signal, e); })
         .finally(() => {
             initialized = true;
         });
@@ -385,5 +385,5 @@ function persistedSignal<T = unknown>(initialValue: T, key: string, mapOld?: (ol
         return value;
     });
 
-    return [c, (newValue: T) => signal.set(newValue)];
+    return [c, (newValue: T) => { signal.set(newValue); }];
 }

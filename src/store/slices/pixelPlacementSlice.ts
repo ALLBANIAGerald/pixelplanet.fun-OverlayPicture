@@ -1,21 +1,22 @@
 import createCachedSelector from 're-reselect';
 import { Signal } from 'signal-polyfill';
-import { RootState } from 'store/store';
-import { gameCoordsToScreen } from 'utils/coordConversion';
-import { selectPageStateCanvasSize } from 'utils/getPageReduxStore';
-import { windowInnerSize } from 'utils/signalPrimitives/windowInnerSize';
+import { RootState } from '../../store/store';
+import { gameCoordsToScreen } from '../../utils/coordConversion';
+import { selectPageStateCanvasSize } from '../../utils/getPageReduxStore';
+import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
 
 import { createSelector, createSlice, Dictionary, PayloadAction } from '@reduxjs/toolkit';
 
 import { Cell, viewCenterSignal, viewScaleSignal } from './gameSlice';
 
 interface PixelPlacementState {
-    pixelsToPlaceQueue: {
-        [key: string]: {
+    pixelsToPlaceQueue: Record<
+        string,
+        {
             coord: Cell;
             color: number;
-        };
-    };
+        }
+    >;
     pixelPlaceQueueEnabled: boolean;
 }
 
@@ -87,7 +88,7 @@ const selectPixelIdsToPlaceByRenderCanvasId = createSelector(selectPixelsToPlace
     const canvasSize = selectPageStateCanvasSize.get();
     const splitCanvasesWidth = Math.ceil(canvasSize / splitRenderCanvasSize);
 
-    const dict = pixelsToPlaceIds.reduce((acc, pixelId) => {
+    const dict = pixelsToPlaceIds.reduce<Dictionary<number[]>>((acc, pixelId) => {
         const x = pixelId % canvasSize;
         const y = Math.floor(pixelId / canvasSize);
         const splitRenderCanvasX = Math.floor(x / splitRenderCanvasSize);
@@ -100,7 +101,7 @@ const selectPixelIdsToPlaceByRenderCanvasId = createSelector(selectPixelsToPlace
         }
         foundAccumulator.push(pixelId);
         return acc;
-    }, {} as Dictionary<number[]>);
+    }, {});
     return dict;
 });
 
@@ -132,6 +133,6 @@ export const selectPixelsToPlaceBySplitRenderCanvasId = createCachedSelector(
         return pixelIdsToPlace
             .map((pixelId) => pixelsToPlaceQueue[pixelId])
             .filter((pixel) => !!pixel)
-            .map((pixel) => pixel as NonNullable<typeof pixel>);
+            .map((pixel) => pixel);
     }
 )((_: RootState, renderCanvasId) => renderCanvasId);

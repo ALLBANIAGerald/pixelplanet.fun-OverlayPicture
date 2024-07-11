@@ -1,5 +1,4 @@
-import localforage from 'localforage';
-import { persistReducer, persistStore } from 'redux-persist';
+import { persistStore } from 'redux-persist';
 
 import { configureStore } from '@reduxjs/toolkit';
 
@@ -9,23 +8,10 @@ import { pixelPlacementSlice } from './slices/pixelPlacementSlice';
 import { processedImagesSlice } from './slices/precessedImages';
 import { listenerMiddleware } from './storeMiddlewareCreator';
 
-const reduxPersistedStorage = localforage.createInstance({
-    name: 'picture_overlay',
-    storeName: 'redux_persisted',
-});
-
-const commonPersistReducerParams = {
-    serialize: false,
-    deserialize: false,
-    storage: reduxPersistedStorage,
-};
-
-const persistedOverlayReducer = persistReducer({ ...commonPersistReducerParams, key: 'overlay' }, overlaySlice.reducer);
-
 export function configureAppStore() {
     return configureStore({
         reducer: {
-            overlay: persistedOverlayReducer,
+            overlay: overlaySlice.reducer,
             chunkData: chunkDataSlice.reducer,
             pixelPlacement: pixelPlacementSlice.reducer,
             processedImages: processedImagesSlice.reducer,

@@ -1,7 +1,7 @@
-import { executeAllHooks } from 'gameInjection/pageStoreHooks';
-import React from 'react';
-import { createRoot } from 'react-dom/client';
-
+/* @refresh reload */
+import { render } from 'solid-js/web';
+import './index.css';
+import { executeAllHooks } from './gameInjection/pageStoreHooks';
 import AppProvidersWrapper from './components/appProvidersWrapper';
 
 function init(): void {
@@ -10,9 +10,7 @@ function init(): void {
     const rootNode = document.createElement('div');
     rootNode.id = 'PictureOverlay_RootNode';
     document.body.prepend(rootNode);
-
-    const root = createRoot(rootNode);
-    root.render(<AppProvidersWrapper />);
+    render(() => <AppProvidersWrapper />, rootNode);
 }
 
 if (document.readyState !== 'complete') {

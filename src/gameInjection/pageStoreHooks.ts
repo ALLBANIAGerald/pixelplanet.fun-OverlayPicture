@@ -1,7 +1,7 @@
-import logger from 'handlers/logger';
-import { selectCurrentHoverPixelOnOutputImageColorIndexInPalette } from 'store/slices/overlaySlice';
-import { store } from 'store/store';
-import { findPageReduxStore, pageReduxStoreSelectColorAction } from 'utils/getPageReduxStore';
+import logger from '../handlers/logger';
+import { selectCurrentHoverPixelOnOutputImageColorIndexInPalette } from '../store/slices/overlaySlice';
+import { store } from '../store/store';
+import { findPageReduxStore, pageReduxStoreSelectColorAction } from '../utils/getPageReduxStore';
 
 export function executeAllHooks(retryCounter = 0) {
     try {
