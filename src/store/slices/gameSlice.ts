@@ -2,7 +2,7 @@ import { EventEmitter } from 'events';
 
 import { viewPortTouchClientCoordinatesSignal } from 'gameInjection/viewport';
 import { Signal } from 'signal-polyfill';
-import { selectPageStateHoverPixel, selectPageStateRoundedCanvasViewCenter } from 'utils/getPageReduxStore';
+import { selectPageStateCanvasPalette, selectPageStateCanvasReservedColors, selectPageStateHoverPixel, selectPageStateRoundedCanvasViewCenter } from 'utils/getPageReduxStore';
 import { windowInnerSize } from 'utils/signalPrimitives/windowInnerSize';
 
 import { createSelector, createSlice, PayloadAction } from '@reduxjs/toolkit';
@@ -20,7 +20,6 @@ interface GameGuiState {
 }
 
 interface CanvasState {
-    reservedColorCount: number;
     id: number;
     canvasSize: number;
     selectedColor: number;
@@ -41,7 +40,6 @@ const initialState: GameState = {
         viewCenter: { x: 0, y: 0 },
     },
     canvas: {
-        reservedColorCount: 0,
         id: 0,
         canvasSize: 1,
         selectedColor: 0,
@@ -56,9 +54,6 @@ export const gameSlice = createSlice({
     initialState,
     name: 'game',
     reducers: {
-        setReservedColorCount: (state, action: PayloadAction<number>) => {
-            state.canvas.reservedColorCount = action.payload;
-        },
         setCanvasId: (state, action: PayloadAction<number>) => {
             state.canvas.id = action.payload;
         },
@@ -86,11 +81,6 @@ export const gameSlice = createSlice({
 export const selectCurrentSelectedColor = createSelector(
     (state: RootState) => state.game.canvas.selectedColor,
     (currentSelectedColor) => currentSelectedColor
-);
-
-export const selectCanvasReservedColorCount = createSelector(
-    (state: RootState) => state.game.canvas.reservedColorCount,
-    (reservedColorCount) => reservedColorCount
 );
 
 export const selectCanvasId = createSelector(
@@ -121,7 +111,9 @@ export const selectCanvasLatestPixelReturnCooldownMs = createSelector(
 /**
  * Filtered out reserved colors from the palette
  */
-export const selectCanvasUserPalette = createSelector(selectCanvasReservedColorCount, selectCanvasPalette, (reservedColorCount, palette) => {
+export const selectCanvasUserPalette = new Signal.Computed(() => {
+    const reservedColorCount = selectPageStateCanvasReservedColors.get();
+    const palette = selectPageStateCanvasPalette.get();
     return palette.slice(reservedColorCount);
 });
 

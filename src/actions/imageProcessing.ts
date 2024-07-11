@@ -1,6 +1,7 @@
-import { createAsyncThunk, isAnyOf } from '@reduxjs/toolkit';
 import { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from 'store/hooks';
+
+import { createAsyncThunk, isAnyOf } from '@reduxjs/toolkit';
 
 import { pictureConverterApi, tryReadingImageData } from '../pictureConversionApi';
 import { selectCanvasUserPalette } from '../store/slices/gameSlice';
@@ -77,7 +78,7 @@ export const startNewImageReadingProcess = createAsyncThunk<ImageData | undefine
 export const startProcessingOutputImage = createAsyncThunk<{ outImageData: ImageData; abortController: AbortController }, void, { state: RootState }>(
     'imageProcessing/startProcessingOutputImage',
     async (_, { getState }) => {
-        const palette = selectCanvasUserPalette(getState());
+        const palette = selectCanvasUserPalette.get();
         const modifierShouldConvertColors = selectModifierShouldConvertColors(getState());
         const modifierImageBrightness = selectModifierImageBrightness(getState());
         const modifierSmolPixels = selectModifierSmolPixels(getState());

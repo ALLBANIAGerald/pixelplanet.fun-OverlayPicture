@@ -12,7 +12,6 @@ import {
     selectPageStateCanvasId,
     selectPageStateCanvasMaxTimeoutMs,
     selectPageStateCanvasPalette,
-    selectPageStateCanvasReservedColors,
     selectPageStateCanvasSize,
     selectPageStateCanvasTimeoutOnBaseMs,
     selectPageStateCurrentSelectedColor,
@@ -35,14 +34,6 @@ function usePageStoreCurrentSelectedColor() {
     useEffect(() => {
         if (currentSelectedColor) dispatch(gameSlice.actions.setSelectedColor(currentSelectedColor));
     }, [dispatch, currentSelectedColor]);
-}
-
-function usePageStoreCanvasReservedColors() {
-    const dispatch = useAppDispatch();
-    const reservedColors = usePageReduxStoreSelector(selectPageStateCanvasReservedColors);
-    useEffect(() => {
-        if (reservedColors) dispatch(gameSlice.actions.setReservedColorCount(reservedColors ?? 0));
-    }, [dispatch, reservedColors]);
 }
 
 function usePageStoreCanvasId() {
@@ -126,7 +117,7 @@ function useLoadSavedConfigurations() {
 function useReprocessOutputImage() {
     const dispatch = useAppDispatch();
     const url = useAppSelector(selectInputUrl);
-    const palette = useAppSelector(selectCanvasUserPalette);
+    const palette = useSignal(selectCanvasUserPalette);
     const modifierShouldConvertColors = useAppSelector(selectModifierShouldConvertColors);
     const modifierImageBrightness = useAppSelector(selectModifierImageBrightness);
     const modifierSmolPixels = useAppSelector(selectModifierSmolPixels);
@@ -142,8 +133,6 @@ const ProviderPageStateMapper: React.FC<React.PropsWithChildren> = ({ children }
     useGlobalKeyShortcuts();
     useLoadSavedConfigurations();
     usePageStoreCurrentSelectedColor();
-    usePageStoreCanvasPalette();
-    usePageStoreCanvasReservedColors();
     usePageStoreCanvasId();
     useWebSocketEvents();
     useReadingInputImageProcess();
@@ -158,7 +147,7 @@ const App: React.FC = () => {
 
     // When palette loads consider page loaded.
     // Sometimes userscript might finish loading sooner than page
-    const palette = usePageReduxStoreSelector(selectPageStateCanvasPalette);
+    const palette = useSignal(selectPageStateCanvasPalette);
     useEffect(() => {
         if (!palette?.length) return;
         setIsPageLoaded(true);

@@ -227,10 +227,10 @@ export const selectPageStateCanvasPalette = new Signal.Computed(() => {
     });
 });
 
-export const selectPageStateCanvasReservedColors = createSelector(
-    (state: PageState) => state.canvas.clrIgnore,
-    (reservedColors) => reservedColors
-);
+export const selectPageStateCanvasReservedColors = new Signal.Computed(() => {
+    const state = latestStateSignal.get();
+    return state?.canvas.clrIgnore ?? 0;
+});
 
 export const selectPageStateCanvasId = createSelector(
     (state: PageState) => state.canvas.canvasId,
