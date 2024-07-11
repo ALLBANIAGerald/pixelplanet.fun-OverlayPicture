@@ -10,16 +10,19 @@
         "paletteOpen": true,
         "mute": true,
         "chatNotify": false,
+        "cursor": true,
         "menuOpen": true,
         "onlineCanvas": false,
+        "dailyPxls": false,
+        "noRound": false,
         "style": "default",
-        "holdPaint": 0,
+        "holdPaint": false,
         "easterEgg": false,
         "moveU": 0,
         "moveV": 0,
         "moveW": 0,
         "_persist": {
-            "version": 17,
+            "version": 21,
             "rehydrated": true
         }
     },
@@ -38,14 +41,16 @@
         "prevTop": [],
         "onlineStats": [],
         "cHistStats": [],
+        "cHourlyStats": [],
         "histStats": {
             "users": [],
             "stats": []
         },
         "pDailyStats": [],
         "pHourlyStats": [],
+        "cooldownChanges": {},
         "_persist": {
-            "version": 17,
+            "version": 19,
             "rehydrated": true
         }
     },
@@ -67,21 +72,20 @@
         }
     },
     "templates": {
-        "ovEnabled": true,
+        "ovEnabled": false,
         "mEnabled": false,
         "oOpacity": 40,
         "oSmallPxls": true,
-        "oRightShift": false,
         "list": [
             {
                 "enabled": true,
-                "title": "test",
+                "title": "sdaasd",
                 "canvasId": "0",
-                "x": -91,
-                "y": -856,
-                "imageId": 1,
-                "width": 1080,
-                "height": 802
+                "x": 0,
+                "y": 0,
+                "imageId": 2,
+                "width": 122,
+                "height": 121
             }
         ],
         "available": true,
@@ -89,20 +93,6 @@
             "version": 17,
             "rehydrated": true
         }
-    },
-    "user": {
-        "id": 0,
-        "name": null,
-        "wait": null,
-        "coolDown": null,
-        "lastCoolDownEnd": null,
-        "messages": [],
-        "mailreg": false,
-        "blockDm": false,
-        "priv": false,
-        "isOnMobile": false,
-        "notification": null,
-        "userlvl": 0
     },
     "canvas": {
         "canvasId": "0",
@@ -277,9 +267,10 @@
                 "bcd": 4000,
                 "pcd": 7000,
                 "cds": 60000,
+                "req": 0,
                 "ranked": true,
                 "sd": "2020-01-07",
-                "desc": "Our main canvas, a huge map of the world. Place everywhere you like",
+                "desc": "Our main canvas, a huge map of the world. Place anywhere you like!",
                 "title": "Earth"
             },
             "1": {
@@ -782,7 +773,7 @@
                 "bcd": 2000,
                 "cds": 60000,
                 "sd": "2020-01-08",
-                "desc": "Place Voxels on a 3D canvas with others",
+                "desc": "Place Voxels on a 3D canvas with others.",
                 "title": "3D Canvas"
             },
             "3": {
@@ -905,7 +896,7 @@
                 "cds": 60000,
                 "req": 0,
                 "sd": "2020-03-15",
-                "desc": "Special canvas to spread awareness of SARS-CoV2",
+                "desc": "Special canvas to spread awareness of SARS-CoV2 (take the vax).",
                 "title": "Coronavirus"
             },
             "5": {
@@ -1270,239 +1261,6 @@
                 "desc": "A canvas for the most active players from the the previous day. Daily ranking updates at 00:00 UTC.",
                 "title": "Top10"
             },
-            "9": {
-                "ident": "e",
-                "colors": [
-                    [
-                        255,
-                        255,
-                        255
-                    ],
-                    [
-                        163,
-                        198,
-                        238
-                    ],
-                    [
-                        255,
-                        255,
-                        255
-                    ],
-                    [
-                        221,
-                        221,
-                        221
-                    ],
-                    [
-                        172,
-                        172,
-                        172
-                    ],
-                    [
-                        109,
-                        109,
-                        109
-                    ],
-                    [
-                        58,
-                        58,
-                        58
-                    ],
-                    [
-                        0,
-                        0,
-                        0
-                    ],
-                    [
-                        255,
-                        125,
-                        120
-                    ],
-                    [
-                        255,
-                        40,
-                        40
-                    ],
-                    [
-                        191,
-                        6,
-                        6
-                    ],
-                    [
-                        127,
-                        0,
-                        0
-                    ],
-                    [
-                        163,
-                        198,
-                        238
-                    ],
-                    [
-                        0,
-                        255,
-                        240
-                    ],
-                    [
-                        18,
-                        190,
-                        255
-                    ],
-                    [
-                        0,
-                        127,
-                        240
-                    ],
-                    [
-                        16,
-                        68,
-                        194
-                    ],
-                    [
-                        17,
-                        17,
-                        84
-                    ],
-                    [
-                        167,
-                        237,
-                        0
-                    ],
-                    [
-                        69,
-                        171,
-                        5
-                    ],
-                    [
-                        79,
-                        105,
-                        32
-                    ],
-                    [
-                        0,
-                        79,
-                        13
-                    ],
-                    [
-                        109,
-                        247,
-                        177
-                    ],
-                    [
-                        0,
-                        193,
-                        154
-                    ],
-                    [
-                        0,
-                        118,
-                        127
-                    ],
-                    [
-                        172,
-                        104,
-                        39
-                    ],
-                    [
-                        114,
-                        69,
-                        36
-                    ],
-                    [
-                        84,
-                        50,
-                        24
-                    ],
-                    [
-                        255,
-                        245,
-                        92
-                    ],
-                    [
-                        255,
-                        218,
-                        8
-                    ],
-                    [
-                        227,
-                        170,
-                        0
-                    ],
-                    [
-                        255,
-                        182,
-                        113
-                    ],
-                    [
-                        255,
-                        154,
-                        8
-                    ],
-                    [
-                        222,
-                        108,
-                        0
-                    ],
-                    [
-                        230,
-                        116,
-                        255
-                    ],
-                    [
-                        191,
-                        56,
-                        222
-                    ],
-                    [
-                        136,
-                        21,
-                        178
-                    ],
-                    [
-                        73,
-                        13,
-                        119
-                    ],
-                    [
-                        255,
-                        116,
-                        225
-                    ],
-                    [
-                        255,
-                        34,
-                        169
-                    ],
-                    [
-                        172,
-                        0,
-                        109
-                    ],
-                    [
-                        252,
-                        225,
-                        184
-                    ],
-                    [
-                        213,
-                        162,
-                        115
-                    ],
-                    [
-                        152,
-                        107,
-                        70
-                    ]
-                ],
-                "cli": 2,
-                "size": 16384,
-                "bcd": 5000,
-                "cds": 600000,
-                "req": 500000,
-                "sd": "2023-10-07",
-                "desc": "Thoia World Canvas. Advanced fictional worldbuilding and arts. Abandon the old world and all it entails.",
-                "title": "Thoia"
-            },
             "10": {
                 "ident": "l",
                 "colors": [
@@ -1540,8 +1298,184 @@
                 "req": 10000,
                 "ranked": true,
                 "sd": "2024-01-07",
-                "desc": "Only four colors. Same rules as moon.",
+                "desc": "Only four colors. Same rules as moon!",
                 "title": "2bit"
+            },
+            "11": {
+                "ident": "s",
+                "colors": [
+                    [
+                        255,
+                        255,
+                        255
+                    ],
+                    [
+                        153,
+                        233,
+                        228
+                    ],
+                    [
+                        255,
+                        255,
+                        255
+                    ],
+                    [
+                        228,
+                        228,
+                        228
+                    ],
+                    [
+                        196,
+                        196,
+                        196
+                    ],
+                    [
+                        136,
+                        136,
+                        136
+                    ],
+                    [
+                        78,
+                        78,
+                        78
+                    ],
+                    [
+                        0,
+                        0,
+                        0
+                    ],
+                    [
+                        244,
+                        179,
+                        174
+                    ],
+                    [
+                        255,
+                        167,
+                        209
+                    ],
+                    [
+                        255,
+                        84,
+                        178
+                    ],
+                    [
+                        255,
+                        101,
+                        101
+                    ],
+                    [
+                        229,
+                        0,
+                        0
+                    ],
+                    [
+                        154,
+                        0,
+                        0
+                    ],
+                    [
+                        254,
+                        164,
+                        96
+                    ],
+                    [
+                        229,
+                        149,
+                        0
+                    ],
+                    [
+                        160,
+                        106,
+                        66
+                    ],
+                    [
+                        96,
+                        64,
+                        40
+                    ],
+                    [
+                        245,
+                        223,
+                        176
+                    ],
+                    [
+                        255,
+                        248,
+                        137
+                    ],
+                    [
+                        229,
+                        217,
+                        0
+                    ],
+                    [
+                        148,
+                        224,
+                        68
+                    ],
+                    [
+                        2,
+                        190,
+                        1
+                    ],
+                    [
+                        104,
+                        131,
+                        56
+                    ],
+                    [
+                        0,
+                        101,
+                        19
+                    ],
+                    [
+                        202,
+                        227,
+                        255
+                    ],
+                    [
+                        0,
+                        211,
+                        221
+                    ],
+                    [
+                        0,
+                        131,
+                        199
+                    ],
+                    [
+                        0,
+                        0,
+                        234
+                    ],
+                    [
+                        25,
+                        25,
+                        115
+                    ],
+                    [
+                        207,
+                        110,
+                        228
+                    ],
+                    [
+                        130,
+                        0,
+                        128
+                    ]
+                ],
+                "size": 16384,
+                "cli": 2,
+                "bcd": 4000,
+                "req": 0,
+                "pcd": 7000,
+                "cds": 60000,
+                "ranked": true,
+                "linkcd": 0,
+                "sd": "2024-02-22",
+                "desc": "Conquer land on a smaller earth with protected ocean. Shares cooldown with earth canvas!",
+                "title": "Minimap"
             }
         },
         "canvasSize": 65536,
@@ -1883,33 +1817,52 @@
         },
         "clrIgnore": 2,
         "selectedColor": 2,
+        "pencilMode": 0,
         "view": [
-            113.22138211472372,
-            -892.1453420745188,
-            1.350048960210719
+            38,
+            56,
+            3.0314331330207964
         ],
         "isHistoricalView": false,
-        "historicalDate": null,
-        "historicalTime": null,
+        "historicalDate": "20240711",
+        "historicalTime": "0000",
         "hover": null,
-        "prevCanvasState": {}
+        "prevCanvasState": {},
+        "_persist": {
+            "version": 2,
+            "rehydrated": true
+        }
+    },
+    "user": {
+        "id": 0,
+        "name": null,
+        "wait": null,
+        "coolDown": null,
+        "lastCoolDownEnd": null,
+        "messages": [],
+        "mailreg": false,
+        "blockDm": false,
+        "priv": false,
+        "isOnMobile": false,
+        "notification": null,
+        "userlvl": 0
     },
     "chat": {
         "channels": {
             "1": [
                 "en",
                 0,
-                1707158878000
+                1720666384000
             ],
             "2": [
                 "int",
                 0,
-                1707157733000
+                1720653810000
             ],
             "4": [
                 "art",
                 0,
-                1707146083000
+                1720664263000
             ]
         },
         "blocked": [],
@@ -1923,10 +1876,30 @@
     },
     "windows": {
         "showWindows": true,
-        "zMax": 7,
-        "windows": [],
-        "positions": {},
-        "args": {},
+        "zMax": 1,
+        "windows": [
+            {
+                "windowId": 48281,
+                "windowType": "SETTINGS",
+                "open": true,
+                "hidden": false,
+                "fullscreen": true,
+                "title": "",
+                "cloneable": true
+            }
+        ],
+        "positions": {
+            "48281": {
+                "xPos": 219,
+                "yPos": 90,
+                "width": 1023,
+                "height": 720,
+                "z": 1
+            }
+        },
+        "args": {
+            "48281": {}
+        },
         "_persist": {
             "version": 17,
             "rehydrated": true
