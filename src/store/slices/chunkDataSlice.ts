@@ -1,9 +1,8 @@
 import { pixelUpdatePacket } from 'gameInjection/webSockets/packets/pixelUpdate';
 import { RootState } from 'store/store';
+import { selectPageStateCanvasId } from 'utils/getPageReduxStore';
 
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
-
-import { selectCanvasId } from './gameSlice';
 
 type ChunkData =
     | {
@@ -93,8 +92,8 @@ export const chunkDataSlice = createSlice({
     },
 });
 
-const fetchChunkDataAction = createAsyncThunk<Uint8Array, { chunkX: number; chunkY: number }, { state: RootState }>('chunkData/fetchChunkData', async (chunkCoords, { getState }) => {
-    const canvasId = selectCanvasId(getState());
+const fetchChunkDataAction = createAsyncThunk<Uint8Array, { chunkX: number; chunkY: number }, { state: RootState }>('chunkData/fetchChunkData', async (chunkCoords) => {
+    const canvasId = selectPageStateCanvasId.get();
     const chunkData = await fetch(`/chunks/${canvasId}/${chunkCoords.chunkX}/${chunkCoords.chunkY}.bmp`)
         .then((x) => x.arrayBuffer())
         .then((x) => new Uint8Array(x));

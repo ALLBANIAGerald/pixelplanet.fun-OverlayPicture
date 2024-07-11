@@ -20,7 +20,6 @@ interface GameGuiState {
 }
 
 interface CanvasState {
-    id: number;
     canvasSize: number;
     maxTimeoutMs: number;
     timeoutOnBaseMs: number;
@@ -39,7 +38,6 @@ const initialState: GameState = {
         viewCenter: { x: 0, y: 0 },
     },
     canvas: {
-        id: 0,
         canvasSize: 1,
         maxTimeoutMs: 100,
         timeoutOnBaseMs: 100,
@@ -52,9 +50,6 @@ export const gameSlice = createSlice({
     initialState,
     name: 'game',
     reducers: {
-        setCanvasId: (state, action: PayloadAction<number>) => {
-            state.canvas.id = action.payload;
-        },
         setCanvasSize: (state, action: PayloadAction<number>) => {
             state.canvas.canvasSize = action.payload;
         },
@@ -72,11 +67,6 @@ export const gameSlice = createSlice({
         },
     },
 });
-
-export const selectCanvasId = createSelector(
-    (state: RootState) => state.game.canvas.id,
-    (id) => id
-);
 
 export const selectCanvasMaxTimeoutMs = createSelector(
     (state: RootState) => state.game.canvas.maxTimeoutMs,

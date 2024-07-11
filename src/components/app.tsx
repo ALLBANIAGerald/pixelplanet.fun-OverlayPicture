@@ -9,12 +9,10 @@ import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { gameSlice, selectCanvasUserPalette } from '../store/slices/gameSlice';
 import { selectInputImageData, selectInputUrl, selectModifierImageBrightness, selectModifierShouldConvertColors, selectModifierSmolPixels } from '../store/slices/overlaySlice';
 import {
-    selectPageStateCanvasId,
     selectPageStateCanvasMaxTimeoutMs,
     selectPageStateCanvasPalette,
     selectPageStateCanvasSize,
     selectPageStateCanvasTimeoutOnBaseMs,
-    selectPageStateCurrentSelectedColor,
     selectPaseStateCanvasTimeoutOnPlacedMs,
     usePageReduxStoreSelector,
 } from '../utils/getPageReduxStore';
@@ -30,15 +28,11 @@ declare global {
 
 function usePageStoreCanvasId() {
     const dispatch = useAppDispatch();
-    const canvasId = usePageReduxStoreSelector(selectPageStateCanvasId);
     const canvasSize = usePageReduxStoreSelector(selectPageStateCanvasSize);
     const maxTimeoutMs = usePageReduxStoreSelector(selectPageStateCanvasMaxTimeoutMs);
     const timeoutOnBaseMs = usePageReduxStoreSelector(selectPageStateCanvasTimeoutOnBaseMs);
     const timeoutOnPlacedMs = usePageReduxStoreSelector(selectPaseStateCanvasTimeoutOnPlacedMs);
 
-    useEffect(() => {
-        if (canvasId) dispatch(gameSlice.actions.setCanvasId(canvasId));
-    }, [dispatch, canvasId]);
     useEffect(() => {
         if (canvasSize) dispatch(gameSlice.actions.setCanvasSize(canvasSize));
     }, [dispatch, canvasSize]);

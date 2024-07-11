@@ -232,10 +232,10 @@ export const selectPageStateCanvasReservedColors = new Signal.Computed(() => {
     return state?.canvas.clrIgnore ?? 0;
 });
 
-export const selectPageStateCanvasId = createSelector(
-    (state: PageState) => state.canvas.canvasId,
-    (canvasId) => canvasId
-);
+export const selectPageStateCanvasId = new Signal.Computed(() => {
+    const state = latestStateSignal.get();
+    return state?.canvas.canvasId ?? 0;
+});
 
 export const selectPageStateCanvasSize = createSelector(
     (state: PageState) => state.canvas.canvasSize,
