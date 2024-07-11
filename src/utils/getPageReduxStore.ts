@@ -72,7 +72,7 @@ function createPageReduxStoreSignal(rootEl: HTMLElement) {
             [Signal.subtle.watched]: () => {
                 const store = findStoreInRoot(rootEl);
                 if (store) {
-                    pageReduxStoreSignal.set({ type: 'success', store });
+                    queueMicrotask(() => pageReduxStoreSignal.set({ type: 'success', store }));
                     return;
                 }
                 if (rootEl.childElementCount === 0) {
@@ -82,13 +82,13 @@ function createPageReduxStoreSignal(rootEl: HTMLElement) {
                             const foundStore = findStoreInRoot(rootEl);
                             if (!foundStore) return;
                             observer?.disconnect();
-                            pageReduxStoreSignal.set({ type: 'success', store: foundStore });
+                            queueMicrotask(() => pageReduxStoreSignal.set({ type: 'success', store: foundStore }));
                         }
                     });
                     observer.observe(rootEl, { subtree: true });
                 } else {
                     // We probably don't have direct access page's `window` instance
-                    pageReduxStoreSignal.set({ type: 'error', error: 'window not accessible' });
+                    queueMicrotask(() => pageReduxStoreSignal.set({ type: 'error', error: 'window not accessible' }));
                 }
             },
             [Signal.subtle.unwatched]: () => {
