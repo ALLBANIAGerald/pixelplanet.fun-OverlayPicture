@@ -20,7 +20,6 @@ interface GameGuiState {
 }
 
 interface CanvasState {
-    palette: [number, number, number][];
     reservedColorCount: number;
     id: number;
     canvasSize: number;
@@ -42,7 +41,6 @@ const initialState: GameState = {
         viewCenter: { x: 0, y: 0 },
     },
     canvas: {
-        palette: [],
         reservedColorCount: 0,
         id: 0,
         canvasSize: 1,
@@ -58,9 +56,6 @@ export const gameSlice = createSlice({
     initialState,
     name: 'game',
     reducers: {
-        setPalette: (state, action: PayloadAction<[number, number, number][]>) => {
-            state.canvas.palette = action.payload;
-        },
         setReservedColorCount: (state, action: PayloadAction<number>) => {
             state.canvas.reservedColorCount = action.payload;
         },
@@ -96,11 +91,6 @@ export const selectCurrentSelectedColor = createSelector(
 export const selectCanvasReservedColorCount = createSelector(
     (state: RootState) => state.game.canvas.reservedColorCount,
     (reservedColorCount) => reservedColorCount
-);
-
-export const selectCanvasPalette = createSelector(
-    (state: RootState) => state.game.canvas.palette,
-    (palette) => palette
 );
 
 export const selectCanvasId = createSelector(

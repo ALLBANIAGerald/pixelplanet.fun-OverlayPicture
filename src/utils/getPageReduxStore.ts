@@ -213,20 +213,19 @@ export const selectPageStateRoundedCanvasViewCenter = new Signal.Computed(() => 
     return { x: Math.round(view.x), y: Math.round(view.y) };
 });
 
-export const selectPageStateCanvasPalette = createSelector(
-    (state: PageState) => state.canvas.palette.abgr,
-    (paletteAbgr) => {
-        return Array.from(new Uint32Array(paletteAbgr)).map<[number, number, number]>((abgr) => {
-            // eslint-disable-next-line no-bitwise
-            const b = (abgr & 0x00ff0000) >>> 16;
-            // eslint-disable-next-line no-bitwise
-            const g = (abgr & 0x0000ff00) >>> 8;
-            // eslint-disable-next-line no-bitwise
-            const r = abgr & 0x000000ff;
-            return [r, g, b];
-        });
-    }
-);
+export const selectPageStateCanvasPalette = new Signal.Computed(() => {
+    const state = latestStateSignal.get();
+    const paletteAbgr = state?.canvas.palette.abgr ?? [];
+    return Array.from(new Uint32Array(paletteAbgr)).map<[number, number, number]>((abgr) => {
+        // eslint-disable-next-line no-bitwise
+        const b = (abgr & 0x00ff0000) >>> 16;
+        // eslint-disable-next-line no-bitwise
+        const g = (abgr & 0x0000ff00) >>> 8;
+        // eslint-disable-next-line no-bitwise
+        const r = abgr & 0x000000ff;
+        return [r, g, b];
+    });
+});
 
 export const selectPageStateCanvasReservedColors = createSelector(
     (state: PageState) => state.canvas.clrIgnore,

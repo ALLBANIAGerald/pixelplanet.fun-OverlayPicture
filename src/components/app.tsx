@@ -37,14 +37,6 @@ function usePageStoreCurrentSelectedColor() {
     }, [dispatch, currentSelectedColor]);
 }
 
-function usePageStoreCanvasPalette() {
-    const dispatch = useAppDispatch();
-    const palette = usePageReduxStoreSelector(selectPageStateCanvasPalette);
-    useEffect(() => {
-        if (palette) dispatch(gameSlice.actions.setPalette(palette));
-    }, [dispatch, palette]);
-}
-
 function usePageStoreCanvasReservedColors() {
     const dispatch = useAppDispatch();
     const reservedColors = usePageReduxStoreSelector(selectPageStateCanvasReservedColors);
