@@ -1,13 +1,18 @@
 import { PixelUpdateReturnCode } from 'gameInjection/webSockets/packets/pixelReturn';
-import { placePixel } from 'gameInjection/webSockets/webSocketPixelPlace';
+import { latestPixelReturnCooldownMsSignal, placePixel } from 'gameInjection/webSockets/webSocketPixelPlace';
 import logger from 'handlers/logger';
 import { useAsyncInterval } from 'hooks/useInterval';
 import React, { useCallback } from 'react';
-import { selectCanvasLatestPixelReturnCooldownMs, selectCanvasMaxTimeoutMs, selectCanvasSize, selectCanvasTimeoutOnBaseMs, selectCanvasTimeoutOnPlacedMs } from 'store/slices/gameSlice';
 import { pixelPlacementSlice, selectPixelPlaceQueueEnabled, selectPixelsToPlaceQueueFirstPixel } from 'store/slices/pixelPlacementSlice';
 import { store, useSignal } from 'store/store';
 import { gameCoordsToChunk } from 'utils/coordConversion';
-import { selectPageStatePixelWaitDate } from 'utils/getPageReduxStore';
+import {
+    selectPageStateCanvasMaxTimeoutMs,
+    selectPageStateCanvasSize,
+    selectPageStateCanvasTimeoutOnBaseMs,
+    selectPageStatePixelWaitDate,
+    selectPaseStateCanvasTimeoutOnPlacedMs,
+} from 'utils/getPageReduxStore';
 
 import { Checkbox, FormControlLabel } from '@mui/material';
 
@@ -33,14 +38,14 @@ const TogglePlacementQueue: React.FC = () => {
     //     return undefined;
     // }, [isEnabled, mouseDownEventCallback]);
 
-    const canvasSize = useAppSelector(selectCanvasSize);
+    const canvasSize = useSignal(selectPageStateCanvasSize);
 
     const waitDate = useSignal(selectPageStatePixelWaitDate);
     const waitUntilMs = waitDate?.getTime() ?? Date.now();
-    const maxTimeoutMs = useAppSelector(selectCanvasMaxTimeoutMs);
-    const timeoutOnBaseMs = useAppSelector(selectCanvasTimeoutOnBaseMs);
-    const timeoutOnPlacedMs = useAppSelector(selectCanvasTimeoutOnPlacedMs);
-    const latestPixelReturnCooldownMs = useAppSelector(selectCanvasLatestPixelReturnCooldownMs);
+    const maxTimeoutMs = useSignal(selectPageStateCanvasMaxTimeoutMs);
+    const timeoutOnBaseMs = useSignal(selectPageStateCanvasTimeoutOnBaseMs);
+    const timeoutOnPlacedMs = useSignal(selectPaseStateCanvasTimeoutOnPlacedMs);
+    const latestPixelReturnCooldownMs = useSignal(latestPixelReturnCooldownMsSignal);
     const maxSinglePixelTimeoutMs = Math.max(timeoutOnBaseMs, timeoutOnPlacedMs, latestPixelReturnCooldownMs);
     const nowMs = Date.now();
     const untilPlacementAttemptMs = Math.max(waitUntilMs - nowMs - (maxTimeoutMs - maxSinglePixelTimeoutMs), 200);

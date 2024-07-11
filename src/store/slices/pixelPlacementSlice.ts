@@ -1,10 +1,13 @@
 import createCachedSelector from 're-reselect';
+import { Signal } from 'signal-polyfill';
 import { RootState } from 'store/store';
 import { gameCoordsToScreen } from 'utils/coordConversion';
+import { selectPageStateCanvasSize } from 'utils/getPageReduxStore';
+import { windowInnerSize } from 'utils/signalPrimitives/windowInnerSize';
 
 import { createSelector, createSlice, Dictionary, PayloadAction } from '@reduxjs/toolkit';
 
-import { Cell, selectCanvasSize } from './gameSlice';
+import { Cell, viewCenterSignal, viewScaleSignal } from './gameSlice';
 
 interface PixelPlacementState {
     pixelsToPlaceQueue: {
@@ -67,9 +70,9 @@ export const selectPixelsToPlaceQueueFirstPixel = createSelector(selectPixelsToP
 const splitRenderCanvasSize = 1024;
 
 export const selectRenderCanvasCoords = createCachedSelector(
-    selectCanvasSize,
     (_: RootState, renderCanvasId: number) => renderCanvasId,
-    (canvasSize, renderCanvasId) => {
+    (renderCanvasId) => {
+        const canvasSize = selectPageStateCanvasSize.get();
         const splitCanvasesWidth = Math.ceil(canvasSize / splitRenderCanvasSize);
         const renderCanvasXCorner = Math.floor(renderCanvasId % splitCanvasesWidth) * splitRenderCanvasSize - canvasSize / 2;
         const renderCanvasYCorner = Math.floor(renderCanvasId / splitCanvasesWidth) * splitRenderCanvasSize - canvasSize / 2;
@@ -80,7 +83,8 @@ export const selectRenderCanvasCoords = createCachedSelector(
     }
 )((_: RootState, renderCanvasId) => renderCanvasId);
 
-const selectPixelIdsToPlaceByRenderCanvasId = createSelector(selectPixelsToPlaceIds, selectCanvasSize, (pixelsToPlaceIds, canvasSize) => {
+const selectPixelIdsToPlaceByRenderCanvasId = createSelector(selectPixelsToPlaceIds, (pixelsToPlaceIds) => {
+    const canvasSize = selectPageStateCanvasSize.get();
     const splitCanvasesWidth = Math.ceil(canvasSize / splitRenderCanvasSize);
 
     const dict = pixelsToPlaceIds.reduce((acc, pixelId) => {
@@ -100,15 +104,14 @@ const selectPixelIdsToPlaceByRenderCanvasId = createSelector(selectPixelsToPlace
     return dict;
 });
 
-export const selectMainCanvasTopLeftScreenCoords = createSelector(
-    selectCanvasSize,
-    selectWindowSize,
-    selectGameViewCenter,
-    selectGameViewScale,
-    (canvasSize, windowSize, gameViewCenter, gameViewScale) => {
-        return gameCoordsToScreen({ x: -canvasSize / 2, y: -canvasSize / 2 }, { height: windowSize.innerHeight, width: windowSize.innerWidth }, gameViewCenter, gameViewScale);
-    }
-);
+export const selectMainCanvasTopLeftScreenCoords = new Signal.Computed(() => {
+    const canvasSize = selectPageStateCanvasSize.get();
+    const windowSize = windowInnerSize.get();
+    const gameViewCenter = viewCenterSignal.get();
+    const gameViewScale = viewScaleSignal.get();
+
+    return gameCoordsToScreen({ x: -canvasSize / 2, y: -canvasSize / 2 }, { height: windowSize.height, width: windowSize.width }, gameViewCenter, gameViewScale);
+});
 
 export const selectPixelsToPlaceRenderCanvasIds = createSelector(selectPixelIdsToPlaceByRenderCanvasId, (pixelIdsToPlaceByRenderCanvasId) =>
     Object.keys(pixelIdsToPlaceByRenderCanvasId).map((key) => parseInt(key, 10))
@@ -117,9 +120,9 @@ export const selectPixelsToPlaceRenderCanvasIds = createSelector(selectPixelIdsT
 export const selectPixelsToPlaceBySplitRenderCanvasId = createCachedSelector(
     selectPixelIdsToPlaceByRenderCanvasId,
     selectPixelsToPlaceQueue,
-    selectCanvasSize,
     (_: RootState, renderCanvasId: number) => renderCanvasId,
-    (pixelIdsToPlaceByRenderCanvasId, pixelsToPlaceQueue, canvasSize, renderCanvasId) => {
+    (pixelIdsToPlaceByRenderCanvasId, pixelsToPlaceQueue, renderCanvasId) => {
+        const canvasSize = selectPageStateCanvasSize.get();
         const splitCanvasesWidth = Math.ceil(canvasSize / splitRenderCanvasSize);
         const splitRenderCanvasX = Math.floor(renderCanvasId % splitCanvasesWidth);
         const splitRenderCanvasY = Math.floor(renderCanvasId / splitCanvasesWidth);

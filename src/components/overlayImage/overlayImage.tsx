@@ -2,10 +2,10 @@ import colorConverter from 'colorConverter';
 import React, { startTransition, useEffect, useRef } from 'react';
 import { selectMainCanvasTopLeftScreenCoords, selectPixelsToPlaceBySplitRenderCanvasId, selectPixelsToPlaceRenderCanvasIds, selectRenderCanvasCoords } from 'store/slices/pixelPlacementSlice';
 import { useSignal } from 'store/store';
-import { selectPageStateCanvasPalette } from 'utils/getPageReduxStore';
+import { selectPageStateCanvasPalette, selectPageStateCanvasSize } from 'utils/getPageReduxStore';
 
 import { useAppSelector } from '../../store/hooks';
-import { selectCanvasSize, viewScaleSignal } from '../../store/slices/gameSlice';
+import { viewScaleSignal } from '../../store/slices/gameSlice';
 import {
     selectInputFile,
     selectInputUrl,
@@ -50,7 +50,7 @@ const PixelQueueSplitCanvas: React.FC<{ splitRenderCanvasId: number }> = (props)
     const canvasPalette = useSignal(selectPageStateCanvasPalette);
     const pixelsToPlaceBySplitRenderCanvasId = useAppSelector((state) => selectPixelsToPlaceBySplitRenderCanvasId(state, splitRenderCanvasId));
     const { renderCanvasXCorner, renderCanvasYCorner } = useAppSelector((state) => selectRenderCanvasCoords(state, splitRenderCanvasId));
-    const canvasSize = useAppSelector(selectCanvasSize);
+    const canvasSize = useSignal(selectPageStateCanvasSize);
 
     useEffect(() => {
         startTransition(() => {
@@ -95,7 +95,7 @@ const PlaceQueuePixels: React.FC = () => {
     const { classes } = useStyles();
     const viewScale = useSignal(viewScaleSignal);
     const renderCanvasIds = useAppSelector(selectPixelsToPlaceRenderCanvasIds);
-    const canvasTopLeftOnScreen = useAppSelector(selectMainCanvasTopLeftScreenCoords);
+    const canvasTopLeftOnScreen = useSignal(selectMainCanvasTopLeftScreenCoords);
 
     return (
         <div

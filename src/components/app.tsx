@@ -6,16 +6,9 @@ import { isOverlayEnabledS, useSignal } from 'store/store';
 
 import { loadSavedConfigurations, startProcessingOutputImage, useReadingInputImageProcess } from '../actions/imageProcessing';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { gameSlice, selectCanvasUserPalette } from '../store/slices/gameSlice';
+import { selectCanvasUserPalette } from '../store/slices/gameSlice';
 import { selectInputImageData, selectInputUrl, selectModifierImageBrightness, selectModifierShouldConvertColors, selectModifierSmolPixels } from '../store/slices/overlaySlice';
-import {
-    selectPageStateCanvasMaxTimeoutMs,
-    selectPageStateCanvasPalette,
-    selectPageStateCanvasSize,
-    selectPageStateCanvasTimeoutOnBaseMs,
-    selectPaseStateCanvasTimeoutOnPlacedMs,
-    usePageReduxStoreSelector,
-} from '../utils/getPageReduxStore';
+import { selectPageStateCanvasPalette } from '../utils/getPageReduxStore';
 
 import ConfigurationModal from './configurationModal/configurationModal';
 import OverlayImage from './overlayImage/overlayImage';
@@ -24,27 +17,6 @@ declare global {
     interface Window {
         pixelPlanetEvents: EventEmitter;
     }
-}
-
-function usePageStoreCanvasId() {
-    const dispatch = useAppDispatch();
-    const canvasSize = usePageReduxStoreSelector(selectPageStateCanvasSize);
-    const maxTimeoutMs = usePageReduxStoreSelector(selectPageStateCanvasMaxTimeoutMs);
-    const timeoutOnBaseMs = usePageReduxStoreSelector(selectPageStateCanvasTimeoutOnBaseMs);
-    const timeoutOnPlacedMs = usePageReduxStoreSelector(selectPaseStateCanvasTimeoutOnPlacedMs);
-
-    useEffect(() => {
-        if (canvasSize) dispatch(gameSlice.actions.setCanvasSize(canvasSize));
-    }, [dispatch, canvasSize]);
-    useEffect(() => {
-        if (maxTimeoutMs) dispatch(gameSlice.actions.setMaxTimeoutMs(maxTimeoutMs));
-    }, [dispatch, maxTimeoutMs]);
-    useEffect(() => {
-        if (timeoutOnBaseMs) dispatch(gameSlice.actions.setTimeoutOnBaseMs(timeoutOnBaseMs));
-    }, [dispatch, timeoutOnBaseMs]);
-    useEffect(() => {
-        if (timeoutOnPlacedMs) dispatch(gameSlice.actions.setTimeoutOnPlacedMs(timeoutOnPlacedMs));
-    }, [dispatch, timeoutOnPlacedMs]);
 }
 
 function useWebSocketEvents() {
@@ -118,7 +90,6 @@ const ProviderPageStateMapper: React.FC<React.PropsWithChildren> = ({ children }
     useReprocessOutputImage();
     useGlobalKeyShortcuts();
     useLoadSavedConfigurations();
-    usePageStoreCanvasId();
     useWebSocketEvents();
     useReadingInputImageProcess();
     // eslint-disable-next-line react/jsx-no-useless-fragment

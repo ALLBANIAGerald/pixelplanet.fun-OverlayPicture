@@ -237,25 +237,30 @@ export const selectPageStateCanvasId = new Signal.Computed(() => {
     return state?.canvas.canvasId ?? 0;
 });
 
-export const selectPageStateCanvasSize = createSelector(
-    (state: PageState) => state.canvas.canvasSize,
-    (size) => size
-);
+export const selectPageStateCanvasSize = new Signal.Computed(() => {
+    const state = latestStateSignal.get();
+    return state?.canvas.canvasSize ?? 1;
+});
 
-export const selectPageStateCanvasMaxTimeoutMs = createSelector(
-    (state: PageState) => state.canvas.canvases[state.canvas.canvasId]?.cds,
-    (canvasMaxTimeout) => canvasMaxTimeout
-);
+const currentCanvas = new Signal.Computed(() => {
+    const state = latestStateSignal.get();
+    return state?.canvas.canvases[state.canvas.canvasId];
+});
 
-export const selectPageStateCanvasTimeoutOnBaseMs = createSelector(
-    (state: PageState) => state.canvas.canvases[state.canvas.canvasId]?.bcd,
-    (canvasTimeoutOnBase) => canvasTimeoutOnBase
-);
+export const selectPageStateCanvasMaxTimeoutMs = new Signal.Computed(() => {
+    const canvas = currentCanvas.get();
+    return canvas?.cds ?? 100;
+});
 
-export const selectPaseStateCanvasTimeoutOnPlacedMs = createSelector(
-    (state: PageState) => state.canvas.canvases[state.canvas.canvasId]?.pcd,
-    (canvasTimeoutOnPlaced) => canvasTimeoutOnPlaced
-);
+export const selectPageStateCanvasTimeoutOnBaseMs = new Signal.Computed(() => {
+    const canvas = currentCanvas.get();
+    return canvas?.bcd ?? 100;
+});
+
+export const selectPaseStateCanvasTimeoutOnPlacedMs = new Signal.Computed(() => {
+    const canvas = currentCanvas.get();
+    return canvas?.pcd ?? 100;
+});
 
 export interface PageState {
     audio: Audio;

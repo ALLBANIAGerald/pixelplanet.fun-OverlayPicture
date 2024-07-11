@@ -1,9 +1,13 @@
 import colorConverter from 'colorConverter';
+import { selectPageStateCanvasPalette, selectPageStateCanvasReservedColors } from 'utils/getPageReduxStore';
+import { windowInnerSize } from 'utils/signalPrimitives/windowInnerSize';
 
 import { createSelector, createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 import { clearInputImageAction, loadSavedConfigurations, setInputImageAction } from '../../actions/imageProcessing';
 import { RootState } from '../store';
+
+import { hoverPixelSignal, viewCenterSignal, viewScaleSignal } from './gameSlice';
 
 interface OverlayImageInputState {
     url?: string;
@@ -234,31 +238,27 @@ export const selectOverlayImageDataOrUrl = createSelector(selectInputUrl, select
 
 // leftOffset: window.innerWidth / 2 - (gameState.centerX - placementConfiguration.xOffset) * gameStore.gameState.viewScale,
 // topOffset: window.innerHeight / 2 - (gameState.centerY - placementConfiguration.yOffset) * gameStore.gameState.viewScale,
-export const selectOverlayOffsetCoordsOnScreen = createSelector(
-    selectWindowSize,
-    selectGameViewCenter,
-    selectPlacementXOffset,
-    selectPlacementYOffset,
-    selectGameViewScale,
-    (windowSize, gameViewCenter, xOffset, yOffset, viewScale) => {
-        const leftOffset = windowSize.innerWidth / 2 - (gameViewCenter.x - xOffset) * viewScale;
-        const topOffset = windowSize.innerHeight / 2 - (gameViewCenter.y - yOffset) * viewScale;
-        return { leftOffset, topOffset };
-    }
-);
+export const selectOverlayOffsetCoordsOnScreen = createSelector(selectPlacementXOffset, selectPlacementYOffset, (xOffset, yOffset) => {
+    const windowSize = windowInnerSize.get();
+    const gameViewCenter = viewCenterSignal.get();
+    const viewScale = viewScaleSignal.get();
+    const leftOffset = windowSize.width / 2 - (gameViewCenter.x - xOffset) * viewScale;
+    const topOffset = windowSize.height / 2 - (gameViewCenter.y - yOffset) * viewScale;
+    return { leftOffset, topOffset };
+});
 
 export const selectCurrentHoverPixelOnOutputImageColorIndexInPalette = createSelector(
     selectPlacementAutoSelectColor,
     selectModifierSmolPixels,
-    selectHoverPixel,
     selectPlacementXOffset,
     selectPlacementYOffset,
     selectRenderImageData,
-    selectCanvasPalette,
-    selectCanvasReservedColorCount,
-    (autoSelectColor, modifierSmolPixels, hoverPixel, placementXOffset, placementYOffset, renderImageData, palette, reservedColorCount) => {
+    (autoSelectColor, modifierSmolPixels, placementXOffset, placementYOffset, renderImageData) => {
         if (!autoSelectColor) return undefined;
         if (!renderImageData) return undefined;
+        const hoverPixel = hoverPixelSignal.get();
+        const palette = selectPageStateCanvasPalette.get();
+        const reservedColorCount = selectPageStateCanvasReservedColors.get();
         const smolPixelsCanvasSizeModifier = modifierSmolPixels ? 3 : 1;
         const smolPixelsCanvasExtraOffsetToMiddle = Math.floor(smolPixelsCanvasSizeModifier / 2);
         const offsetXInImage = (hoverPixel.x - placementXOffset) * smolPixelsCanvasSizeModifier + smolPixelsCanvasExtraOffsetToMiddle;

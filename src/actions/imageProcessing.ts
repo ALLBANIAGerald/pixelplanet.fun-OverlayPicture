@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from 'store/hooks';
 
-import { createAsyncThunk, isAnyOf } from '@reduxjs/toolkit';
+import { createAsyncThunk } from '@reduxjs/toolkit';
 
 import { pictureConverterApi, tryReadingImageData } from '../pictureConversionApi';
 import { selectCanvasUserPalette } from '../store/slices/gameSlice';

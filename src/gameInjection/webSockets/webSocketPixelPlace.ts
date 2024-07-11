@@ -1,7 +1,8 @@
-import { gameSlice, selectCanvasSize } from 'store/slices/gameSlice';
+import { Signal } from 'signal-polyfill';
 import { pixelPlacementSlice } from 'store/slices/pixelPlacementSlice';
 import { store } from 'store/store';
 import { chunkToGameCoords } from 'utils/coordConversion';
+import { selectPageStateCanvasSize } from 'utils/getPageReduxStore';
 
 import { pixelReturnPacket } from './packets/pixelReturn';
 import { PixelUpdateData, pixelUpdatePacket } from './packets/pixelUpdate';
@@ -40,13 +41,15 @@ webSocketSenderEvents.on('pixelUpdate', () => {
  * On intercepted pixelReturn event, add to custom pixel placement queue
  */
 webSocketSenderEvents.on('pixelPlacementIntercepted', (data) => {
-    const canvasSize = selectCanvasSize(store.getState());
+    const canvasSize = selectPageStateCanvasSize.get();
     const pixels = data.pixels.map((x) => ({ coord: chunkToGameCoords(data.chunkX, data.chunkY, x.offsetInChunk, canvasSize), color: x.color }));
     store.dispatch(pixelPlacementSlice.actions.addPixelsToPlaceQueue({ canvasSize, pixels }));
 });
 
+export const latestPixelReturnCooldownMsSignal = new Signal.State(0);
+
 webSocketEvents.on('pixelReturn', (data) => {
-    if (data.coolDownSeconds > 0) store.dispatch(gameSlice.actions.setLatestPixelReturnCooldown(data.coolDownSeconds * 1000));
+    if (data.coolDownSeconds > 0) latestPixelReturnCooldownMsSignal.set(data.coolDownSeconds * 1000);
     waitingForPixelReturnList.shift()?.resolvePromise(data);
 });
 

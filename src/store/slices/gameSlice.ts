@@ -5,88 +5,10 @@ import { Signal } from 'signal-polyfill';
 import { selectPageStateCanvasPalette, selectPageStateCanvasReservedColors, selectPageStateHoverPixel, selectPageStateRoundedCanvasViewCenter } from 'utils/getPageReduxStore';
 import { windowInnerSize } from 'utils/signalPrimitives/windowInnerSize';
 
-import { createSelector, createSlice, PayloadAction } from '@reduxjs/toolkit';
-
-import { RootState } from '../store';
-
 export interface Cell {
     x: number;
     y: number;
 }
-
-interface GameGuiState {
-    viewScale: number;
-    viewCenter: Cell;
-}
-
-interface CanvasState {
-    canvasSize: number;
-    maxTimeoutMs: number;
-    timeoutOnBaseMs: number;
-    timeoutOnPlacedMs: number;
-    latestPixelReturnCooldownMs: number;
-}
-
-interface GameState {
-    gameGui: GameGuiState;
-    canvas: CanvasState;
-}
-
-const initialState: GameState = {
-    gameGui: {
-        viewScale: 1,
-        viewCenter: { x: 0, y: 0 },
-    },
-    canvas: {
-        canvasSize: 1,
-        maxTimeoutMs: 100,
-        timeoutOnBaseMs: 100,
-        timeoutOnPlacedMs: 100,
-        latestPixelReturnCooldownMs: 0,
-    },
-};
-
-export const gameSlice = createSlice({
-    initialState,
-    name: 'game',
-    reducers: {
-        setCanvasSize: (state, action: PayloadAction<number>) => {
-            state.canvas.canvasSize = action.payload;
-        },
-        setMaxTimeoutMs: (state, action: PayloadAction<number>) => {
-            state.canvas.maxTimeoutMs = action.payload;
-        },
-        setTimeoutOnBaseMs: (state, action: PayloadAction<number>) => {
-            state.canvas.timeoutOnBaseMs = action.payload;
-        },
-        setTimeoutOnPlacedMs: (state, action: PayloadAction<number>) => {
-            state.canvas.timeoutOnPlacedMs = action.payload;
-        },
-        setLatestPixelReturnCooldown: (state, action: PayloadAction<number>) => {
-            state.canvas.latestPixelReturnCooldownMs = action.payload;
-        },
-    },
-});
-
-export const selectCanvasMaxTimeoutMs = createSelector(
-    (state: RootState) => state.game.canvas.maxTimeoutMs,
-    (maxTimeoutMs) => maxTimeoutMs
-);
-
-export const selectCanvasTimeoutOnBaseMs = createSelector(
-    (state: RootState) => state.game.canvas.timeoutOnBaseMs,
-    (timeoutOnBaseMs) => timeoutOnBaseMs
-);
-
-export const selectCanvasTimeoutOnPlacedMs = createSelector(
-    (state: RootState) => state.game.canvas.timeoutOnPlacedMs,
-    (timeoutOnPlacedMs) => timeoutOnPlacedMs
-);
-
-export const selectCanvasLatestPixelReturnCooldownMs = createSelector(
-    (state: RootState) => state.game.canvas.latestPixelReturnCooldownMs,
-    (latestPixelReturnCooldownMs) => latestPixelReturnCooldownMs
-);
 
 /**
  * Filtered out reserved colors from the palette
@@ -96,11 +18,6 @@ export const selectCanvasUserPalette = new Signal.Computed(() => {
     const palette = selectPageStateCanvasPalette.get();
     return palette.slice(reservedColorCount);
 });
-
-export const selectCanvasSize = createSelector(
-    (state: RootState) => state.game.canvas.canvasSize,
-    (canvasSize) => canvasSize
-);
 
 let definedSetter = false;
 const pixelPlanetEvents = new Signal.State<EventEmitter | undefined>(window.pixelPlanetEvents, {
