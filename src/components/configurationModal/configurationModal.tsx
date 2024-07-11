@@ -1,9 +1,9 @@
-import { setInputImageAction } from 'actions/imageProcessing';
+import { setInputImageAction } from '../../actions/imageProcessing';
 import { get as getColor, to as toColor } from 'color-string';
 import React, { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { isOverlayEnabledS } from 'store/slices/overlaySlice';
-import { useSignal } from 'store/useSignal';
+import { isOverlayEnabledSignal } from '../../store/slices/overlaySlice';
+import { useSignal } from '../../store/useSignal';
 import { createMakeStyles } from 'tss-react';
 
 import ExpandLess from '@mui/icons-material/ExpandLess';
@@ -41,7 +41,7 @@ const ConfigurationModal: React.FC = () => {
     const { classes } = useStyles({ isMinimized: isModalMinimized });
     const dispatch = useAppDispatch();
 
-    const isOverlayEnabled = useSignal(isOverlayEnabledS);
+    const isOverlayEnabled = useSignal(isOverlayEnabledSignal);
     const onDrop = useCallback(
         (acceptedFiles: File[]) => {
             const file = acceptedFiles[0];
@@ -52,7 +52,7 @@ const ConfigurationModal: React.FC = () => {
     const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, accept: { 'image/*': ['.png', '.gif', '.jpeg', '.jpg'] }, noClick: true });
 
     const handleToggleOverlayOnOff = (e: React.ChangeEvent<HTMLInputElement>) => {
-        isOverlayEnabledS[1](e.target.checked);
+        isOverlayEnabledSignal[1](e.target.checked);
     };
     return (
         <div {...getRootProps()} className={classes.modalRoot} style={{ border: isDragActive ? '3px dashed red' : undefined }}>

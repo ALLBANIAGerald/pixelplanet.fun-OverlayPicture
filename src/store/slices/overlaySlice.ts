@@ -339,10 +339,10 @@ interface OverlayImage {
               type: 'url';
               url: string;
           };
-    resize: {
-        width: number;
-        height: number;
-    };
+    // resize: {
+    //     width: number;
+    //     height: number;
+    // };
 }
 
 // store OverlayImage[] in indexedDb.
@@ -354,16 +354,66 @@ interface OverlayImage {
 // TODO edit button will mark current one as "current", it's details will be loaded into current edit modal, and changes will be applied to that image
 
 const signalsStorage = localforage.createInstance({ name: 'picture_overlay', storeName: 'signals' });
-export const isOverlayEnabledS = persistedSignal(true, 'isOverlayEnabled', (o) => o.overlayEnabled);
+export const isOverlayEnabledSignal = persistedSignal(true, 'isOverlayEnabled', (o) => o.overlayEnabled);
+export const overlayImagesSignal = persistedSignal<OverlayImage[]>([], 'overlayImages', async (o) => {
+    const saved = o.savedConfigs.map<OverlayImage>((x, index) => ({
+        canvasId: '0',
+        enabled: false,
+        id: index,
+        imageFile: {
+            type: 'url',
+            url: x.imageUrl,
+        },
+        modifications: {
+            convertColors: { enabled: x.modifiers.shouldConvertColors },
+            overrideBrightness: { brightness: x.modifiers.imageBrightness },
+        },
+        title: 'Migrated',
+        x: x.placementConfiguration.xOffset,
+        y: x.placementConfiguration.yOffset,
+    }));
+    const buffer = await o.overlayImage.inputImage.file?.arrayBuffer().catch(() => undefined);
+    let img: OverlayImage['imageFile'] | undefined = buffer
+        ? {
+              type: 'file',
+              buffer: buffer,
+          }
+        : undefined;
+    if (img === undefined)
+        img = o.overlayImage.inputImage.url
+            ? {
+                  type: 'url',
+                  url: o.overlayImage.inputImage.url,
+              }
+            : undefined;
+    if (img)
+        saved.push({
+            canvasId: '0',
+            enabled: true,
+            id: saved.length,
+            imageFile: img,
+            modifications: {
+                convertColors: { enabled: o.modifications.shouldConvertColors },
+                overrideBrightness: { brightness: o.modifications.imageBrightness },
+            },
+            title: o.overlayImage.inputImage.file?.name ?? 'Migrated',
+            x: o.placementConfiguration.xOffset,
+            y: o.placementConfiguration.yOffset,
+        });
+    return saved;
+});
+export const overlayTransparencySignal = new Signal.State(90);
+export const isFollowMouseActiveSignal = new Signal.State(false);
+export const isAutoSelectColorActiveSignal = new Signal.State(false);
 
-export type StoredSignal<T> = [Signal.Computed<T>, (newValue: T) => void];
+export type StoredSignal<T> = [() => T, (newValue: T) => void];
 
-function persistedSignal<T = unknown>(initialValue: T, key: string, mapOld?: (old: RootState['overlay']) => T): StoredSignal<T> {
+function persistedSignal<T = unknown>(initialValue: T, key: string, mapOld?: (old: RootState['overlay']) => T | Promise<T>): StoredSignal<T> {
     const signal = new Signal.State(initialValue);
     let initialized = false;
     signalsStorage
         .getItem<T>(key)
-        .then((stored) => {
+        .then(async (stored) => {
             if (stored === null && mapOld) return getStoredValue(mapOld);
             return stored;
         })
@@ -371,19 +421,18 @@ function persistedSignal<T = unknown>(initialValue: T, key: string, mapOld?: (ol
             if (stored == null) return;
             if (!initialized) signal.set(stored);
         })
-        .catch((e) => { logger.log('failed to get persisted signal value', signal, e); })
+        .catch((e: unknown) => {
+            logger.log('failed to get persisted signal value', signal, e);
+        })
         .finally(() => {
             initialized = true;
         });
 
-    const c = new Signal.Computed(() => {
-        const value = signal.get();
-        if (value !== initialValue && !initialized) {
-            initialized = true;
-            signalsStorage.setItem(key, value);
-        } else if (initialized) signalsStorage.setItem(key, value);
-        return value;
-    });
-
-    return [c, (newValue: T) => { signal.set(newValue); }];
+    return [
+        () => signal.get(),
+        (newValue: T) => {
+            if (initialized) void signalsStorage.setItem(key, newValue);
+            signal.set(newValue);
+        },
+    ];
 }

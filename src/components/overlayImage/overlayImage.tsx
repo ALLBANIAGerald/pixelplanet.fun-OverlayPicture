@@ -1,8 +1,8 @@
-import colorConverter from 'colorConverter';
+import colorConverter from '../../colorConverter';
 import React, { startTransition, useEffect, useRef } from 'react';
-import { selectMainCanvasTopLeftScreenCoords, selectPixelsToPlaceBySplitRenderCanvasId, selectPixelsToPlaceRenderCanvasIds, selectRenderCanvasCoords } from 'store/slices/pixelPlacementSlice';
-import { useSignal } from 'store/useSignal';
-import { selectPageStateCanvasPalette, selectPageStateCanvasSize } from 'utils/getPageReduxStore';
+import { selectMainCanvasTopLeftScreenCoords, selectPixelsToPlaceBySplitRenderCanvasId, selectPixelsToPlaceRenderCanvasIds, selectRenderCanvasCoords } from '../../store/slices/pixelPlacementSlice';
+import { useSignal } from '../../store/useSignal';
+import { selectPageStateCanvasPalette, selectPageStateCanvasSize } from '../../utils/getPageReduxStore';
 
 import { useAppSelector } from '../../store/hooks';
 import { viewScaleSignal } from '../../store/slices/gameSlice';
@@ -91,7 +91,7 @@ const PixelQueueSplitCanvas: React.FC<{ splitRenderCanvasId: number }> = (props)
     );
 };
 
-const PlaceQueuePixels: React.FC = () => {
+const PlaceQueuePixels = () => {
     const { classes } = useStyles();
     const viewScale = useSignal(viewScaleSignal);
     const renderCanvasIds = useAppSelector(selectPixelsToPlaceRenderCanvasIds);
@@ -113,10 +113,10 @@ const PlaceQueuePixels: React.FC = () => {
     );
 };
 
-const OverlayImageCanvas: React.FC = () => {
+const OverlayImageCanvas = () => {
     const imageData = useAppSelector(selectRenderImageData);
     const { classes } = useStyles();
-    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const canvasRef = create<HTMLCanvasElement>(null);
     const { leftOffset, topOffset } = useAppSelector(selectOverlayOffsetCoordsOnScreen);
     const opacity = useAppSelector(selectPlacementTransparency) / 100;
     const viewScale = useSignal(viewScaleSignal);
@@ -138,12 +138,12 @@ const OverlayImageCanvas: React.FC = () => {
     return (
         <canvas
             ref={canvasRef}
-            className={classes.overlayImage}
+            class={classes.overlayImage}
             style={{
                 opacity,
-                transform: `scale(${viewScale * canvasScaleModifier})`,
-                left: leftOffset,
-                top: topOffset,
+                transform: `scale(${(viewScale * canvasScaleModifier).toString()})`,
+                left: leftOffset.toString(),
+                top: topOffset.toString(),
             }}
         />
     );
@@ -169,7 +169,7 @@ const useRenderImageUrl = () => {
     return fileUrl || imageUrl;
 };
 
-const OverlayImageImg: React.FC = () => {
+const OverlayImageImg = () => {
     const imageUrl = useRenderImageUrl();
     const { classes } = useStyles();
     const { leftOffset, topOffset } = useAppSelector(selectOverlayOffsetCoordsOnScreen);
@@ -181,13 +181,13 @@ const OverlayImageImg: React.FC = () => {
     return (
         <img
             alt=""
-            className={classes.overlayImage}
+            class={classes.overlayImage}
             src={imageUrl}
             style={{
                 opacity,
-                transform: `scale(${viewScale})`,
-                left: leftOffset,
-                top: topOffset,
+                transform: `scale(${viewScale.toString()})`,
+                left: leftOffset.toString(),
+                top: topOffset.toString(),
             }}
         />
     );

@@ -7,7 +7,7 @@ import { useSignal } from 'store/useSignal';
 import { loadSavedConfigurations, startProcessingOutputImage, useReadingInputImageProcess } from '../actions/imageProcessing';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { selectCanvasUserPalette } from '../store/slices/gameSlice';
-import { isOverlayEnabledS, selectInputImageData, selectInputUrl, selectModifierImageBrightness, selectModifierShouldConvertColors, selectModifierSmolPixels } from '../store/slices/overlaySlice';
+import { isOverlayEnabledSignal, selectInputImageData, selectInputUrl, selectModifierImageBrightness, selectModifierShouldConvertColors, selectModifierSmolPixels } from '../store/slices/overlaySlice';
 import { selectPageStateCanvasPalette } from '../utils/getPageReduxStore';
 
 import ConfigurationModal from './configurationModal/configurationModal';
@@ -25,9 +25,9 @@ function useWebSocketEvents() {
 }
 
 function useGlobalKeyShortcuts() {
-    const isOverlayEnabled = useSignal(isOverlayEnabledS);
+    const isOverlayEnabled = useSignal(isOverlayEnabledSignal);
     const handleToggleOverlay = useCallback(() => {
-        isOverlayEnabledS[1](!isOverlayEnabled);
+        isOverlayEnabledSignal[1](!isOverlayEnabled);
     }, [isOverlayEnabled]);
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
@@ -97,7 +97,7 @@ const ProviderPageStateMapper: React.FC<React.PropsWithChildren> = ({ children }
 };
 
 const App: React.FC = () => {
-    const isOverlayEnabled = useSignal(isOverlayEnabledS);
+    const isOverlayEnabled = useSignal(isOverlayEnabledSignal);
 
     const [isPageLoaded, setIsPageLoaded] = useState(false);
 
