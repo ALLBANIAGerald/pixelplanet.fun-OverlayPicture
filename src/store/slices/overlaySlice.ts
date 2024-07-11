@@ -314,6 +314,45 @@ export const selectCurrentStateAsConfiguration = createSelector(
     }
 );
 
+type OverlayImage = {
+    id: number;
+    enabled: boolean;
+    title: string;
+    canvasId: string;
+    x: number;
+    y: number;
+    // transparency: number; --- global transparency?
+    modifications: {
+        convertColors: {
+            enabled: boolean;
+        };
+        overrideBrightness: {
+            brightness: number;
+        };
+    };
+    imageFile:
+        | {
+              type: 'file';
+              buffer: ArrayBuffer;
+          }
+        | {
+              type: 'url';
+              url: string;
+          };
+    resize: {
+        width: number;
+        height: number;
+    };
+};
+
+// store OverlayImage[] in indexedDb.
+// TODO migrate old saved data, make everything but current "disabled"
+// OverlayImage should store every detail required to display an image, multiple are available at a time
+// TODO do not display image if it's outside of screen
+// TODO small Pixels should only be visible from some specific zoom scale and bigger.
+// TODO display list of saved images, when selected, export button.
+// TODO edit button will mark current one as "current", it's details will be loaded into current edit modal, and changes will be applied to that image
+
 const signalsStorage = localforage.createInstance({ name: 'picture_overlay', storeName: 'signals' });
 export const isOverlayEnabledS = persistedSignal(true, 'isOverlayEnabled', (o) => o.overlayEnabled);
 
