@@ -13,7 +13,7 @@ function isStoreFromRedux(store: any) {
     return true;
 }
 
-function getStoreFromReactInternalEl(el: any): Store<PageState, AnyAction> | undefined {
+function getStoreFromReactInternalEl(el: any): Store<PageState> | undefined {
     if (el.tag !== 0 || !el.child) return undefined;
     if (el.child.tag !== 10) return undefined;
     if (!el.child.memoizedProps) return undefined;
@@ -43,7 +43,7 @@ function findStoreInRoot(el: HTMLElement) {
     return undefined;
 }
 
-export function findPageReduxStore(): Store<PageState, AnyAction> {
+export function findPageReduxStore(): Store<PageState> {
     const reactRootEl = findReactRootContainerEl();
     if (!reactRootEl) throw new Error("Couldn't find React root container");
     const store = findStoreInRoot(reactRootEl);
@@ -66,13 +66,15 @@ const reactRootElSignal = new Signal.State(reactRootEl);
 
 function createPageReduxStoreSignal(rootEl: HTMLElement) {
     let observer: MutationObserver | undefined;
-    const pageReduxStoreSignal = new Signal.State<{ type: 'success'; store: Store<PageState, AnyAction> } | { type: 'loading' } | { type: 'error'; error: 'window not accessible' }>(
+    const pageReduxStoreSignal = new Signal.State<{ type: 'success'; store: Store<PageState> } | { type: 'loading' } | { type: 'error'; error: 'window not accessible' }>(
         { type: 'loading' },
         {
             [Signal.subtle.watched]: () => {
                 const store = findStoreInRoot(rootEl);
                 if (store) {
-                    queueMicrotask(() => pageReduxStoreSignal.set({ type: 'success', store }));
+                    queueMicrotask(() => {
+                        pageReduxStoreSignal.set({ type: 'success', store });
+                    });
                     return;
                 }
                 if (rootEl.childElementCount === 0) {
@@ -82,13 +84,17 @@ function createPageReduxStoreSignal(rootEl: HTMLElement) {
                             const foundStore = findStoreInRoot(rootEl);
                             if (!foundStore) return;
                             observer?.disconnect();
-                            queueMicrotask(() => pageReduxStoreSignal.set({ type: 'success', store: foundStore }));
+                            queueMicrotask(() => {
+                                pageReduxStoreSignal.set({ type: 'success', store: foundStore });
+                            });
                         }
                     });
                     observer.observe(rootEl, { subtree: true });
                 } else {
                     // We probably don't have direct access page's `window` instance
-                    queueMicrotask(() => pageReduxStoreSignal.set({ type: 'error', error: 'window not accessible' }));
+                    queueMicrotask(() => {
+                        pageReduxStoreSignal.set({ type: 'error', error: 'window not accessible' });
+                    });
                 }
             },
             [Signal.subtle.unwatched]: () => {
@@ -102,7 +108,7 @@ function createPageReduxStoreSignal(rootEl: HTMLElement) {
 
 const pageReduxStoreNestedSignal = new Signal.Computed(() => {
     const rootEl = reactRootElSignal.get();
-    if (!rootEl) return new Signal.Computed(() => ({ type: 'loading' } as const));
+    if (!rootEl) return new Signal.Computed(() => ({ type: 'loading' }) as const);
     return createPageReduxStoreSignal(rootEl);
 });
 
@@ -111,9 +117,7 @@ export const pageReduxStoreSignal = new Signal.Computed(() => {
     return nested.get();
 });
 
-interface TypedUseSelectorHookWithUndefined<TState> {
-    <TSelected>(selector: (state: TState) => TSelected, equalityFn?: (left: TSelected, right: TSelected) => boolean): TSelected | undefined;
-}
+type TypedUseSelectorHookWithUndefined<TState> = <TSelected>(selector: (state: TState) => TSelected, equalityFn?: (left: TSelected, right: TSelected) => boolean) => TSelected | undefined;
 
 /**
  * Hacky useSelector hook to work for the custom page store
@@ -155,7 +159,7 @@ export function setViewCoordinates(view: [number, number]) {
     };
 }
 
-function createLatestStateSignal(store: Store<PageState, AnyAction>) {
+function createLatestStateSignal(store: Store<PageState>) {
     let unsub: (() => void) | undefined;
     const latestState = new Signal.State<PageState | undefined>(undefined, {
         [Signal.subtle.watched]: () => {
@@ -201,8 +205,8 @@ export const selectPageStateViewScale = createSelector(
 
 export const selectPageStateCanvasViewCenter = new Signal.Computed(() => {
     const state = latestStateSignal.get();
-    const x = state?.canvas.view?.[0];
-    const y = state?.canvas.view?.[1];
+    const x = state?.canvas.view[0];
+    const y = state?.canvas.view[1];
     if (x == null || y == null) return undefined;
     return { x, y };
 });
@@ -234,7 +238,7 @@ export const selectPageStateCanvasReservedColors = new Signal.Computed(() => {
 
 export const selectPageStateCanvasId = new Signal.Computed(() => {
     const state = latestStateSignal.get();
-    return state?.canvas.canvasId ?? 0;
+    return state?.canvas.canvasId ?? '0';
 });
 
 export const selectPageStateCanvasSize = new Signal.Computed(() => {
@@ -296,7 +300,7 @@ export interface Audio {
 }
 
 export interface Canvas {
-    canvasId: number;
+    canvasId: string;
     canvasIdent: string;
     canvasSize: number;
     historicalCanvasSize: number;
@@ -308,7 +312,7 @@ export interface Canvas {
     selectedColor: number;
     view: number[];
     scale: number;
-    canvases: { [key: number]: Canvase };
+    canvases: Record<number, Canvase>;
     isHistoricalView: boolean;
     historicalDate: null;
     historicalTime: null;
@@ -319,7 +323,7 @@ export interface Canvas {
 
 export interface Canvase {
     ident: string;
-    colors: Array<number[]>;
+    colors: number[][];
     size: number;
     cli?: number;
     bcd: number;
@@ -329,7 +333,7 @@ export interface Canvase {
     sd: string;
     desc: string;
     title: string;
-    historicalSizes?: Array<Array<number | string>>;
+    historicalSizes?: (number | string)[][];
     req?: number | string;
     v?: boolean;
     hid?: boolean;
@@ -340,22 +344,22 @@ export interface Palette {
     rgb: Uint8Array;
     colors: string[];
     abgr: Uint32Array;
-    fl: Array<[number, number, number]>;
+    fl: [number, number, number][];
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface PrevCanvasCoords {}
 
 export interface Chat {
-    channels: { [key: string]: Array<number | string> };
+    channels: Record<string, (number | string)[]>;
     blocked: any[];
     messages: PrevCanvasCoords;
 }
 
 export interface ChatRead {
     mute: any[];
-    readTs: { [key: string]: number };
-    unread: { [key: string]: boolean };
+    readTs: Record<string, number>;
+    unread: Record<string, boolean>;
     chatChannel: number;
 }
 

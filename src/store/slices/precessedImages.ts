@@ -1,4 +1,4 @@
-import { clearInputImageAction, clearOutputImageAction, startNewImageReadingProcess, startProcessingOutputImage } from 'actions/imageProcessing';
+import { clearInputImageAction, clearOutputImageAction, startNewImageReadingProcess, startProcessingOutputImage } from '../../actions/imageProcessing';
 
 import { createSlice } from '@reduxjs/toolkit';
 

@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Signal } from 'signal-polyfill';
 import { effect } from '../../store/effect';
 import { getStoredValue } from '../../store/getStoredData';
-import { selectPageStateCanvasPalette, selectPageStateCanvasReservedColors } from '../../utils/getPageReduxStore';
+import { selectPageStateCanvasId, selectPageStateCanvasPalette, selectPageStateCanvasReservedColors } from '../../utils/getPageReduxStore';
 import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
 
 import { createSelector, createSlice, PayloadAction } from '@reduxjs/toolkit';
@@ -14,6 +14,7 @@ import { clearInputImageAction, loadSavedConfigurations, setInputImageAction } f
 import { RootState } from '../store';
 
 import { hoverPixelSignal, viewCenterSignal, viewScaleSignal } from './gameSlice';
+import { gameCoordsToScreen, screenToGameCoords } from '../../utils/coordConversion';
 
 interface OverlayImageInputState {
     url?: string;
@@ -194,11 +195,6 @@ export const selectModifierImageBrightness = createSelector(
     (imageBrightness) => imageBrightness
 );
 
-export const selectModifierShouldConvertColors = createSelector(
-    (state: RootState) => state.overlay.modifications.shouldConvertColors,
-    (shouldConvertColors) => shouldConvertColors
-);
-
 export const selectModifierSmolPixels = createSelector(
     (state: RootState) => state.overlay.modifications.smolPixels,
     (smolPixels) => smolPixels
@@ -314,13 +310,19 @@ export const selectCurrentStateAsConfiguration = createSelector(
     }
 );
 
-interface OverlayImage {
+export interface OverlayImage {
     id: number;
     enabled: boolean;
     title: string;
     canvasId: string;
-    x: number;
-    y: number;
+    location: {
+        x: number;
+        y: number;
+    };
+    size: {
+        width: number;
+        height: number;
+    };
     // transparency: number; --- global transparency?
     modifications: {
         convertColors: {
@@ -333,7 +335,7 @@ interface OverlayImage {
     imageFile:
         | {
               type: 'file';
-              buffer: ArrayBuffer;
+              file: File;
           }
         | {
               type: 'url';
@@ -355,7 +357,7 @@ interface OverlayImage {
 
 const signalsStorage = localforage.createInstance({ name: 'picture_overlay', storeName: 'signals' });
 export const isOverlayEnabledSignal = persistedSignal(true, 'isOverlayEnabled', (o) => o.overlayEnabled);
-export const overlayImagesSignal = persistedSignal<OverlayImage[]>([], 'overlayImages', async (o) => {
+export const overlayImagesSignal = persistedSignal<OverlayImage[]>([], 'overlayImages', (o) => {
     const saved = o.savedConfigs.map<OverlayImage>((x, index) => ({
         canvasId: '0',
         enabled: false,
@@ -369,14 +371,20 @@ export const overlayImagesSignal = persistedSignal<OverlayImage[]>([], 'overlayI
             overrideBrightness: { brightness: x.modifiers.imageBrightness },
         },
         title: 'Migrated',
-        x: x.placementConfiguration.xOffset,
-        y: x.placementConfiguration.yOffset,
+        location: {
+            x: x.placementConfiguration.xOffset,
+            y: x.placementConfiguration.yOffset,
+        },
+        size: {
+            // Some arbitrary value, big enough for most cases
+            height: 1024,
+            width: 1024,
+        },
     }));
-    const buffer = await o.overlayImage.inputImage.file?.arrayBuffer().catch(() => undefined);
-    let img: OverlayImage['imageFile'] | undefined = buffer
+    let img: OverlayImage['imageFile'] | undefined = o.overlayImage.inputImage.file
         ? {
               type: 'file',
-              buffer: buffer,
+              file: o.overlayImage.inputImage.file,
           }
         : undefined;
     if (img === undefined)
@@ -397,14 +405,21 @@ export const overlayImagesSignal = persistedSignal<OverlayImage[]>([], 'overlayI
                 overrideBrightness: { brightness: o.modifications.imageBrightness },
             },
             title: o.overlayImage.inputImage.file?.name ?? 'Migrated',
-            x: o.placementConfiguration.xOffset,
-            y: o.placementConfiguration.yOffset,
+            location: {
+                x: o.placementConfiguration.xOffset,
+                y: o.placementConfiguration.yOffset,
+            },
+            size: {
+                height: 1024,
+                width: 1024,
+            },
         });
     return saved;
 });
 export const overlayTransparencySignal = new Signal.State(90);
 export const isFollowMouseActiveSignal = new Signal.State(false);
 export const isAutoSelectColorActiveSignal = new Signal.State(false);
+export const isShowSmallPixelsActiveSignal = new Signal.State(false);
 
 export type StoredSignal<T> = [() => T, (newValue: T) => void];
 
@@ -436,3 +451,38 @@ function persistedSignal<T = unknown>(initialValue: T, key: string, mapOld?: (ol
         },
     ];
 }
+
+export const overlayImagesById = new Signal.Computed(() => {
+    const images = overlayImagesSignal[0]();
+    return images.reduce<Record<string, OverlayImage>>((acc, curr) => {
+        acc[curr.id] = curr;
+        return acc;
+    }, {});
+});
+// TODO create new signal with overlayImagesLocations
+// Should contain {canvasId: string, id: number, x:number, y: number, width: number, height: number}[]
+// And have custom equality comparison. go through the array and check if anything changed
+export const enabledOverlayImages = new Signal.Computed(() => overlayImagesSignal[0]().filter((x) => x.enabled));
+export const imagesOnCurrentCanvas = new Signal.Computed(() => {
+    const currentCanvasId = selectPageStateCanvasId.get();
+    const images = overlayImagesSignal[0]();
+    const imagesOnCanvas = images.filter((x) => x.canvasId === currentCanvasId);
+    return imagesOnCanvas;
+});
+export const visibleOnScreenOverlayImages = new Signal.Computed(() => {
+    const windowSize = windowInnerSize.get();
+    const viewCenter = viewCenterSignal.get();
+    const viewScale = viewScaleSignal.get();
+    return imagesOnCurrentCanvas.get().filter((x) => {
+        const screenCoords = gameCoordsToScreen({ x: x.location.x, y: x.location.y }, windowSize, viewCenter, viewScale);
+        if (screenCoords.clientX + x.size.width < 0 || screenCoords.clientY + x.size.height < 0) return false;
+        if (screenCoords.clientX > windowSize.width || screenCoords.clientY > windowSize.height) return false;
+        return true;
+    });
+});
+export const topLeftScreenToGameCoordinates = new Signal.Computed(() => {
+    const windowSize = windowInnerSize.get();
+    const viewCenter = viewCenterSignal.get();
+    const viewScale = viewScaleSignal.get();
+    return screenToGameCoords({ clientX: 0, clientY: 0 }, windowSize, viewCenter, viewScale);
+});

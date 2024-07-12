@@ -1,27 +1,10 @@
-import { ErrorBoundary } from 'react-error-boundary';
-import { PersistGate } from 'redux-persist/integration/react';
-import { configureAppStore, persistor, store } from '../store/store';
-import { useAppTheme } from '../theme/makeStyles';
-import { GlobalStyles } from 'tss-react';
-
-import { ScopedCssBaseline, ThemeProvider } from '@mui/material';
-
 import App from './app';
-import { ErrorBoundaryFallbackModal } from './errorBoundaryFallbackModal';
 
-const AppProvidersWrapper: React.FC = () => {
-    const [appStore, setAppStore] = React.useState(store);
-    const theme = useAppTheme();
+const AppProvidersWrapper = () => {
     return (
-        <Provider store={appStore}>
-            <GlobalStyles
-                styles={{
-                    body: {
-                        margin: 0,
-                        padding: 0,
-                    },
-                }}
-            />
+        <>
+            <App></App>
+            {/* <Provider store={appStore}>
             <ThemeProvider theme={theme}>
                 <ScopedCssBaseline>
                     <ErrorBoundary
@@ -34,7 +17,8 @@ const AppProvidersWrapper: React.FC = () => {
                     </ErrorBoundary>
                 </ScopedCssBaseline>
             </ThemeProvider>
-        </Provider>
+        </Provider> */}
+        </>
     );
 };
 

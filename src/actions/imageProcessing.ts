@@ -18,10 +18,10 @@ import type { RootState } from '../store/store';
 import { delay } from '../utils/promiseUtils';
 
 type InputImage = File | string;
-type SetInputImageActionResult = {
+interface SetInputImageActionResult {
     url?: string;
     file?: File;
-};
+}
 export const setInputImageAction = createAsyncThunk<SetInputImageActionResult, InputImage, { state: RootState }>('imageProcessing/setInputImage', async (input, { dispatch, getState }) => {
     await dispatch(clearInputImageAction());
 
@@ -69,7 +69,9 @@ export const startNewImageReadingProcess = createAsyncThunk<ImageData | undefine
     if (file != null) {
         const fileUrl = URL.createObjectURL(file);
         // schedule cleanup of the file url
-        delay(0).then(() => URL.revokeObjectURL(fileUrl));
+        delay(0).then(() => {
+            URL.revokeObjectURL(fileUrl);
+        });
         return tryReadingImageData(fileUrl, abortController.signal);
     }
     return undefined;
@@ -86,7 +88,9 @@ export const startProcessingOutputImage = createAsyncThunk<{ outImageData: Image
         if (inputImageData == null) throw new Error("Can't process output image without input image data");
         const abortController = new AbortController();
         const outImageData = await new Promise<ImageData>((resolve, reject) => {
-            abortController.signal.onabort = () => reject(new Error('aborted'));
+            abortController.signal.onabort = () => {
+                reject(new Error('aborted'));
+            };
             pictureConverterApi
                 .applyModificationsToImageData(palette, inputImageData, modifierShouldConvertColors, modifierImageBrightness, modifierSmolPixels)
                 .then((imageData) => {

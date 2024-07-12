@@ -1,9 +1,9 @@
 import { EventEmitter } from 'events';
 
-import { viewPortTouchClientCoordinatesSignal } from 'gameInjection/viewport';
+import { viewPortTouchClientCoordinatesSignal } from '../../gameInjection/viewport';
 import { Signal } from 'signal-polyfill';
-import { selectPageStateCanvasPalette, selectPageStateCanvasReservedColors, selectPageStateHoverPixel, selectPageStateRoundedCanvasViewCenter } from 'utils/getPageReduxStore';
-import { windowInnerSize } from 'utils/signalPrimitives/windowInnerSize';
+import { selectPageStateCanvasPalette, selectPageStateCanvasReservedColors, selectPageStateHoverPixel, selectPageStateRoundedCanvasViewCenter } from '../../utils/getPageReduxStore';
+import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
 
 export interface Cell {
     x: number;
@@ -27,8 +27,8 @@ const pixelPlanetEvents = new Signal.State<EventEmitter | undefined>(window.pixe
             Object.defineProperty(window, 'pixelPlanetEvents', {
                 set: (v) => {
                     definedSetter = false;
-                    // @ts-expect-error workaround if events not initialized yet
                     delete window.pixelPlanetEvents;
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- workaround if events not initialized yet
                     window.pixelPlanetEvents = v;
                 },
                 configurable: true,
@@ -44,7 +44,6 @@ const pixelPlanetEvents = new Signal.State<EventEmitter | undefined>(window.pixe
     },
     [Signal.subtle.unwatched]: () => {
         if (definedSetter) {
-            // @ts-expect-error workaround if events not initialized yet
             delete window.pixelPlanetEvents;
         }
     },
@@ -55,9 +54,9 @@ function createViewCenterSignal(events: EventEmitter) {
         if (!viewCenterArray) return;
         if (!Array.isArray(viewCenterArray)) return;
         if (viewCenterArray.length < 2) return;
+        if (typeof viewCenterArray[0] !== 'number' || typeof viewCenterArray[1] !== 'number') return;
         const x = viewCenterArray[0];
         const y = viewCenterArray[1];
-        if (typeof x !== 'number' || typeof y !== 'number') return;
         viewCenter.set({ x, y });
     };
     const viewCenter = new Signal.State(

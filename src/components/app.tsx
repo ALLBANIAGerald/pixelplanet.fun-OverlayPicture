@@ -1,8 +1,8 @@
 import type { EventEmitter } from 'events';
-import { webSocketEvents } from 'gameInjection/webSockets/webSocketEvents';
+import { webSocketEvents } from '../gameInjection/webSockets/webSocketEvents';
 import React, { useCallback, useEffect, useState } from 'react';
-import { chunkDataSlice } from 'store/slices/chunkDataSlice';
-import { useSignal } from 'store/useSignal';
+import { chunkDataSlice } from '../store/slices/chunkDataSlice';
+import { useSignal } from '../store/useSignal';
 
 import { loadSavedConfigurations, startProcessingOutputImage, useReadingInputImageProcess } from '../actions/imageProcessing';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
@@ -11,11 +11,12 @@ import { isOverlayEnabledSignal, selectInputImageData, selectInputUrl, selectMod
 import { selectPageStateCanvasPalette } from '../utils/getPageReduxStore';
 
 import ConfigurationModal from './configurationModal/configurationModal';
-import OverlayImage from './overlayImage/overlayImage';
+import { OverlayImages } from './overlayImage/overlayImage';
+import { Show } from 'solid-js';
 
 declare global {
     interface Window {
-        pixelPlanetEvents: EventEmitter;
+        pixelPlanetEvents?: EventEmitter;
     }
 }
 
@@ -61,7 +62,9 @@ function useGlobalKeyShortcuts() {
         };
         window.addEventListener('keydown', handleKeyDown);
 
-        return () => window.removeEventListener('keydown', handleKeyDown);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
     }, [handleToggleOverlay]);
 }
 
@@ -92,11 +95,10 @@ const ProviderPageStateMapper: React.FC<React.PropsWithChildren> = ({ children }
     useLoadSavedConfigurations();
     useWebSocketEvents();
     useReadingInputImageProcess();
-    // eslint-disable-next-line react/jsx-no-useless-fragment
     return <>{children}</>;
 };
 
-const App: React.FC = () => {
+const App = () => {
     const isOverlayEnabled = useSignal(isOverlayEnabledSignal);
 
     const [isPageLoaded, setIsPageLoaded] = useState(false);
@@ -105,7 +107,7 @@ const App: React.FC = () => {
     // Sometimes userscript might finish loading sooner than page
     const palette = useSignal(selectPageStateCanvasPalette);
     useEffect(() => {
-        if (!palette?.length) return;
+        if (!palette.length) return;
         setIsPageLoaded(true);
     }, [palette]);
 
@@ -113,10 +115,12 @@ const App: React.FC = () => {
 
     return (
         <div>
-            <ProviderPageStateMapper>
-                {isOverlayEnabled && <OverlayImage />}
-                <ConfigurationModal />
-            </ProviderPageStateMapper>
+            {/* <ProviderPageStateMapper> */}
+            <Show when={isOverlayEnabled()}>
+                <OverlayImages />
+            </Show>
+            <ConfigurationModal />
+            {/* </ProviderPageStateMapper> */}
         </div>
     );
 };

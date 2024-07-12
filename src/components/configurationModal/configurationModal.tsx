@@ -36,7 +36,7 @@ const useStyles = makeStyles.makeStyles<{ isMinimized: boolean }>()((theme, prop
     };
 });
 
-const ConfigurationModal: React.FC = () => {
+const ConfigurationModal = () => {
     const [isModalMinimized, setIsModalMinimized] = React.useState(false);
     const { classes } = useStyles({ isMinimized: isModalMinimized });
     const dispatch = useAppDispatch();
@@ -81,7 +81,13 @@ const ConfigurationModal: React.FC = () => {
                     </div>
                 </>
             )}
-            <IconButton onClick={(): void => setIsModalMinimized(!isModalMinimized)}>{isModalMinimized ? <Palette /> : <ExpandLess />}</IconButton>
+            <IconButton
+                onClick={(): void => {
+                    setIsModalMinimized(!isModalMinimized);
+                }}
+            >
+                {isModalMinimized ? <Palette /> : <ExpandLess />}
+            </IconButton>
         </div>
     );
 };

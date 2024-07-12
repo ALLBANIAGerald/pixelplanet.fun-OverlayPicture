@@ -1,205 +1,456 @@
-import colorConverter from '../../colorConverter';
-import React, { startTransition, useEffect, useRef } from 'react';
-import { selectMainCanvasTopLeftScreenCoords, selectPixelsToPlaceBySplitRenderCanvasId, selectPixelsToPlaceRenderCanvasIds, selectRenderCanvasCoords } from '../../store/slices/pixelPlacementSlice';
 import { useSignal } from '../../store/useSignal';
-import { selectPageStateCanvasPalette, selectPageStateCanvasSize } from '../../utils/getPageReduxStore';
+import { selectPageStateCanvasPalette } from '../../utils/getPageReduxStore';
+import { viewCenterSignal, viewScaleSignal } from '../../store/slices/gameSlice';
+import { isShowSmallPixelsActiveSignal, OverlayImage, overlayImagesById, overlayTransparencySignal, visibleOnScreenOverlayImages } from '../../store/slices/overlaySlice';
+import { Accessor, createEffect, createMemo, createRenderEffect, createSignal, For, onCleanup, Show } from 'solid-js';
+import { gameCoordsToScreen } from '../../utils/coordConversion';
+import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
+import { createStore } from 'solid-js/store';
+import { GM_xmlhttpRequest } from 'vite-plugin-monkey/dist/client';
+import { pictureConverterApi } from '../../pictureConversionApi';
 
-import { useAppSelector } from '../../store/hooks';
-import { viewScaleSignal } from '../../store/slices/gameSlice';
-import {
-    selectInputFile,
-    selectInputUrl,
-    selectModifierSmolPixels,
-    selectOverlayOffsetCoordsOnScreen,
-    selectPlacementTransparency,
-    selectRenderImageData,
-    selectShouldShowImageFromData,
-    selectShouldShowImageFromUrl,
-} from '../../store/slices/overlaySlice';
-import { makeStyles } from '../../theme/makeStyles';
+async function loadUrlToImage(url: string) {
+    return new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.src = url;
+        img.onload = () => {
+            resolve(img);
+        };
+        img.onerror = () => {
+            reject(new Error('Image load error'));
+        };
+    });
+}
 
-const useStyles = makeStyles()({
-    overlayImage: {
-        position: 'absolute',
-        left: 0,
-        top: 0,
-        pointerEvents: 'none',
-        transformOrigin: 'top left',
-        imageRendering: 'pixelated',
-    },
-    overlayImageSplitChunk: {
-        transform: `scale(${1 / 3})`,
-        transformOrigin: 'top left',
-        position: 'absolute',
-        pointerEvents: 'none',
-    },
-    overlayImageSplitChunkWrapper: {
-        position: 'fixed',
-        pointerEvents: 'none',
-        transformOrigin: 'top left',
-        imageRendering: 'pixelated',
-    },
-});
+function usePromise<T>(fn: () => Promise<T>) {
+    const [result, setResult] = createStore<{ state: 'loading' } | { state: 'ready'; result: T } | { state: 'error'; error: unknown }>({ state: 'loading' });
 
-const splitRenderCanvasSize = 1024;
-
-const PixelQueueSplitCanvas: React.FC<{ splitRenderCanvasId: number }> = (props) => {
-    const { splitRenderCanvasId } = props;
-    const { classes } = useStyles();
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const canvasPalette = useSignal(selectPageStateCanvasPalette);
-    const pixelsToPlaceBySplitRenderCanvasId = useAppSelector((state) => selectPixelsToPlaceBySplitRenderCanvasId(state, splitRenderCanvasId));
-    const { renderCanvasXCorner, renderCanvasYCorner } = useAppSelector((state) => selectRenderCanvasCoords(state, splitRenderCanvasId));
-    const canvasSize = useSignal(selectPageStateCanvasSize);
-
-    useEffect(() => {
-        startTransition(() => {
-            const canvas = canvasRef.current;
-            if (!canvas) return;
-
-            const imageDataWidth = splitRenderCanvasSize * 3;
-            const imageData = new ImageData(imageDataWidth, imageDataWidth);
-            canvas.width = imageData.width;
-            canvas.height = imageData.height;
-            pixelsToPlaceBySplitRenderCanvasId.forEach((x) => {
-                const currentXOffsetFromCorner = x.coord.x - renderCanvasXCorner;
-                const currentYOffsetFromCorner = x.coord.y - renderCanvasYCorner;
-                const rgb = colorConverter.getActualColorFromPalette(canvasPalette, x.color);
-                if (!rgb) return;
-                // eslint-disable-next-line no-bitwise
-                const idx = (currentXOffsetFromCorner * 3 + 1 + (currentYOffsetFromCorner * 3 + 1) * imageDataWidth) << 2;
-                const [r, g, b] = rgb;
-                imageData.data[idx] = r;
-                imageData.data[idx + 1] = g;
-                imageData.data[idx + 2] = b;
-                imageData.data[idx + 3] = 255;
-            });
-            canvas.getContext('2d')?.putImageData(imageData, 0, 0);
+    createEffect(() => {
+        setResult({
+            state: 'loading',
         });
-    }, [canvasPalette, pixelsToPlaceBySplitRenderCanvasId, renderCanvasXCorner, renderCanvasYCorner]);
+        fn()
+            .then((r) => {
+                setResult({
+                    state: 'ready',
+                    result: r,
+                });
+            })
+            .catch((e: unknown) => {
+                setResult({ state: 'error', error: e });
+            });
+    });
+    return result;
+}
 
-    return (
-        <canvas
-            key={splitRenderCanvasId}
-            ref={canvasRef}
-            className={classes.overlayImageSplitChunk}
-            style={{
-                left: renderCanvasXCorner + canvasSize / 2,
-                top: renderCanvasYCorner + canvasSize / 2,
-            }}
-        />
+// If this doesn't work we can use FileReader api to load image as readAsDataURL
+function useImageFileUrl(imageFile: Accessor<OverlayImage['imageFile']>) {
+    const fileUrl = createMemo(() => {
+        const imgf = imageFile();
+        const url = imgf.type === 'file' ? URL.createObjectURL(imgf.file) : imgf.url;
+        onCleanup(() => {
+            if (imgf.type === 'file') URL.revokeObjectURL(url);
+        });
+        return url;
+    });
+    return fileUrl;
+}
+
+function useLoadImageElement(imageFile: Accessor<OverlayImage['imageFile']>) {
+    const fileUrl = useImageFileUrl(imageFile);
+    // const fileDataUrlPromise = createMemo(() => readFileAsDataUrl(imageFile.type === 'file' ? imageFile.file : undefined));
+    // const fileDataUrl = usePromise(fileDataUrlPromise);
+    const loadedImgPromise = createMemo(async () => loadUrlToImage(fileUrl()));
+    const loadedImg = usePromise(loadedImgPromise);
+    const imgLoadFallbackPromise = createMemo(async () => {
+        if (loadedImg.state !== 'error') return;
+        const imgf = imageFile();
+        if (imgf.type !== 'url') return;
+        return new Promise<Blob>((resolve, reject) => {
+            const reqAbort = GM_xmlhttpRequest({
+                url: imgf.url,
+                responseType: 'blob',
+                onload: (event) => {
+                    resolve(event.response);
+                },
+                onerror: (e) => {
+                    reject(new Error(e.error));
+                },
+            });
+            onCleanup(() => {
+                reqAbort.abort();
+            });
+        });
+    });
+    const imgLoadFallbackUrl = usePromise(imgLoadFallbackPromise);
+    const imgFallbackUrl = createMemo(() => {
+        const url = imgLoadFallbackUrl.state === 'ready' && imgLoadFallbackUrl.result ? URL.createObjectURL(imgLoadFallbackUrl.result) : undefined;
+        onCleanup(() => {
+            if (url) URL.revokeObjectURL(url);
+        });
+        return url;
+    });
+    const loadedImgFallbackPromise = createMemo(async () => {
+        const url = imgFallbackUrl();
+        if (!url) return;
+        return loadUrlToImage(url);
+    });
+    const loadedImgFallback = usePromise(loadedImgFallbackPromise);
+    const loadingState = createMemo<{ state: 'loading' } | { state: 'ready'; result: HTMLImageElement } | { state: 'error'; error: unknown }>(() => {
+        if (loadedImg.state === 'loading') {
+            return {
+                state: 'loading',
+            };
+        }
+        if (loadedImg.state === 'ready') {
+            return {
+                state: 'ready',
+                result: loadedImg.result,
+            };
+        }
+        if (loadedImgFallback.state === 'loading') {
+            return {
+                state: 'loading',
+            };
+        }
+        if (loadedImgFallback.state === 'ready') {
+            if (loadedImgFallback.result === undefined) {
+                return {
+                    state: 'error',
+                    error: new Error('Failed to load image'),
+                };
+            }
+            return {
+                state: 'ready',
+                result: loadedImgFallback.result,
+            };
+        }
+        return {
+            state: 'error',
+            error: new Error('Failed to load image'),
+        };
+    });
+    return loadingState;
+}
+
+function useProcessImageDataModifications(
+    palette: Accessor<[number, number, number][]>,
+    inputImageData: Accessor<ImageData>,
+    modifierShouldConvertColors: Accessor<boolean>,
+    modifierImageBrightness: Accessor<number>
+) {
+    const abortController = new AbortController();
+    const outImageDataPromise = createMemo(
+        () =>
+            new Promise<ImageData>((resolve, reject) => {
+                abortController.signal.onabort = () => {
+                    reject(new Error('aborted'));
+                };
+                pictureConverterApi
+                    .applyModificationsToImageData(palette(), inputImageData(), modifierShouldConvertColors(), modifierImageBrightness())
+                    .then((imageData) => {
+                        resolve(imageData);
+                    })
+                    .catch((error: unknown) => {
+                        reject(new Error(`Failed to applyModificationsToImageData ${JSON.stringify(error)}`));
+                    });
+            })
     );
-};
+    onCleanup(() => {
+        abortController.abort('dispose');
+    });
+    return usePromise(outImageDataPromise);
+}
 
-const PlaceQueuePixels = () => {
-    const { classes } = useStyles();
-    const viewScale = useSignal(viewScaleSignal);
-    const renderCanvasIds = useAppSelector(selectPixelsToPlaceRenderCanvasIds);
-    const canvasTopLeftOnScreen = useSignal(selectMainCanvasTopLeftScreenCoords);
-
-    return (
-        <div
-            className={classes.overlayImageSplitChunkWrapper}
-            style={{
-                left: canvasTopLeftOnScreen.clientX,
-                top: canvasTopLeftOnScreen.clientY,
-                transform: `scale(${viewScale})`,
-            }}
-        >
-            {renderCanvasIds.map((x) => (
-                <PixelQueueSplitCanvas key={x} splitRenderCanvasId={x} />
-            ))}
-        </div>
+function useProcessImageDataUseSmallPixels(inputImageData: Accessor<ImageData>) {
+    const abortController = new AbortController();
+    const outImageDataPromise = createMemo(
+        () =>
+            new Promise<ImageData>((resolve, reject) => {
+                abortController.signal.onabort = () => {
+                    reject(new Error('aborted'));
+                };
+                pictureConverterApi
+                    .applySmallPixelsModifier(inputImageData())
+                    .then((imageData) => {
+                        resolve(imageData);
+                    })
+                    .catch((error: unknown) => {
+                        reject(new Error(`Failed to applySmallPixelsModifier ${JSON.stringify(error)}`));
+                    });
+            })
     );
-};
+    onCleanup(() => {
+        abortController.abort('dispose');
+    });
+    return usePromise(outImageDataPromise);
+}
 
-const OverlayImageCanvas = () => {
-    const imageData = useAppSelector(selectRenderImageData);
-    const { classes } = useStyles();
-    const canvasRef = create<HTMLCanvasElement>(null);
-    const { leftOffset, topOffset } = useAppSelector(selectOverlayOffsetCoordsOnScreen);
-    const opacity = useAppSelector(selectPlacementTransparency) / 100;
+function useProcessCanvasData(inputImageData: Accessor<ImageData | undefined>, modifierShouldConvertColors: Accessor<boolean>, modifierImageBrightness: Accessor<number>) {
+    const isShowSmallPixelsActive = useSignal(isShowSmallPixelsActiveSignal);
+    const palette = useSignal(selectPageStateCanvasPalette);
+    const processedRegularData = createMemo(() => {
+        const img = inputImageData();
+        return img ? useProcessImageDataModifications(palette, () => img, modifierShouldConvertColors, modifierImageBrightness) : undefined;
+    });
+    const processedSmallPixelsData = createMemo(() => {
+        if (!isShowSmallPixelsActive()) return;
+        const processedData = processedRegularData();
+        if (processedData && processedData.state === 'ready') return useProcessImageDataUseSmallPixels(() => processedData.result);
+        const img = inputImageData();
+        return img ? useProcessImageDataUseSmallPixels(() => img) : undefined;
+    });
+    return {
+        modifiers: processedRegularData,
+        small: processedSmallPixelsData,
+    };
+}
+
+const OverlayImageCanvas = (props: { image: OverlayImage; loadedImageElement: HTMLImageElement }) => {
+    const [canvasRef, setCanvasRef] = createSignal<HTMLCanvasElement>();
+    const windowSize = useSignal(windowInnerSize);
+    const viewCenterGameCoords = useSignal(viewCenterSignal);
     const viewScale = useSignal(viewScaleSignal);
-    const modifierSmolPixels = useAppSelector(selectModifierSmolPixels);
-    const canvasScaleModifier = modifierSmolPixels ? 1 / 3 : 1;
+    const screenOffset = createMemo(() => gameCoordsToScreen(props.image.location, windowSize(), viewCenterGameCoords(), viewScale()));
 
-    useEffect(() => {
-        if (!imageData) return;
-        const canvas = canvasRef.current;
+    const transparency = useSignal(overlayTransparencySignal);
+    const modifierSmallPixels = useSignal(isShowSmallPixelsActiveSignal);
+    const canvasScaleModifier = createMemo(() => (modifierSmallPixels() ? 1 / 3 : 1));
+    const [imageData, setImageData] = createSignal<ImageData>();
+
+    const processedCanvasData = useProcessCanvasData(
+        imageData,
+        () => props.image.modifications.convertColors.enabled,
+        () => props.image.modifications.overrideBrightness.brightness
+    );
+
+    const smallPixelsData = createMemo(() => {
+        if (!modifierSmallPixels()) return;
+        const small = processedCanvasData.small();
+        if (small?.state !== 'ready') return;
+        return small.result;
+    });
+
+    const modifiersData = createMemo(() => {
+        const modifiers = processedCanvasData.modifiers();
+        if (modifiers?.state !== 'ready') return;
+        return modifiers.result;
+    });
+
+    const renderData = createMemo(() => {
+        if (viewScale() > 5) {
+            const smallPixelsD = smallPixelsData();
+            if (smallPixelsD) {
+                return {
+                    type: 'smallPixels',
+                    imageData: smallPixelsD,
+                } as const;
+            }
+        }
+        const mData = modifiersData();
+        if (mData)
+            return {
+                type: 'modified',
+                imageData: mData,
+            } as const;
+        return {
+            type: 'regular',
+        } as const;
+    });
+
+    createRenderEffect(() => {
+        const canvas = canvasRef();
         if (!canvas) return;
+        const loadedImageElement = props.loadedImageElement;
+        canvas.width = loadedImageElement.width;
+        canvas.height = loadedImageElement.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.drawImage(loadedImageElement, 0, 0);
+        setImageData(ctx.getImageData(0, 0, loadedImageElement.width, loadedImageElement.height));
+    });
+
+    return (
+        <>
+            <Show when={renderData().type === 'regular'}>
+                <canvas
+                    ref={setCanvasRef}
+                    class={'pointer-events-none absolute left-0 top-0 origin-top-left'}
+                    style={{
+                        'image-rendering': 'pixelated',
+                        opacity: transparency() / 100,
+                        transform: `scale(${(viewScale() * canvasScaleModifier()).toString()})`,
+                        left: screenOffset().clientX.toString(),
+                        top: screenOffset().clientY.toString(),
+                    }}
+                />
+            </Show>
+            <Show
+                when={(() => {
+                    const r = renderData();
+                    return r.type === 'modified' || r.type === 'smallPixels' ? r : false;
+                })()}
+            >
+                {(data) => <OverlayImageCanvasFromImageData image={props.image} imageData={data().imageData} smallPixels={data().type === 'smallPixels'} />}
+            </Show>
+        </>
+    );
+};
+
+function OverlayImageCanvasFromImageData(props: { image: OverlayImage; imageData: ImageData; smallPixels: boolean }) {
+    const [canvasRef, setCanvasRef] = createSignal<HTMLCanvasElement>();
+    const windowSize = useSignal(windowInnerSize);
+    const viewCenterGameCoords = useSignal(viewCenterSignal);
+    const viewScale = useSignal(viewScaleSignal);
+    const screenOffset = createMemo(() => gameCoordsToScreen(props.image.location, windowSize(), viewCenterGameCoords(), viewScale()));
+
+    const transparency = useSignal(overlayTransparencySignal);
+    const canvasScaleModifier = createMemo(() => (props.smallPixels ? 1 / 3 : 1));
+
+    createRenderEffect(() => {
+        const canvas = canvasRef();
+        if (!canvas) return;
+        const imageData = props.imageData;
         canvas.width = imageData.width;
         canvas.height = imageData.height;
         const ctx = canvas.getContext('2d');
-        ctx?.putImageData(imageData, 0, 0);
-    }, [imageData]);
-
-    if (!imageData) return <div>missing image data</div>;
+        if (!ctx) return;
+        ctx.putImageData(imageData, 0, 0);
+    });
 
     return (
         <canvas
-            ref={canvasRef}
-            class={classes.overlayImage}
+            ref={setCanvasRef}
+            class="pointer-events-none absolute left-0 top-0 origin-top-left"
             style={{
-                opacity,
-                transform: `scale(${(viewScale * canvasScaleModifier).toString()})`,
-                left: leftOffset.toString(),
-                top: topOffset.toString(),
+                'image-rendering': 'pixelated',
+                opacity: transparency() / 100,
+                transform: `scale(${(viewScale() * canvasScaleModifier()).toString()})`,
+                left: screenOffset().clientX.toString(),
+                top: screenOffset().clientY.toString(),
             }}
         />
     );
-};
+}
 
-const useFileUrlFromFile = () => {
-    const imageFile = useAppSelector(selectInputFile);
-    const [fileUrl, setFileUrl] = React.useState<string>();
-    useEffect(() => {
-        if (!imageFile) return undefined;
-        const newFileUrl = URL.createObjectURL(imageFile);
-        setFileUrl(newFileUrl);
-        return () => {
-            URL.revokeObjectURL(newFileUrl);
-        };
-    }, [imageFile]);
-    return fileUrl;
-};
-
-const useRenderImageUrl = () => {
-    const imageUrl = useAppSelector(selectInputUrl);
-    const fileUrl = useFileUrlFromFile();
-    return fileUrl || imageUrl;
-};
-
-const OverlayImageImg = () => {
-    const imageUrl = useRenderImageUrl();
-    const { classes } = useStyles();
-    const { leftOffset, topOffset } = useAppSelector(selectOverlayOffsetCoordsOnScreen);
-    const opacity = useAppSelector(selectPlacementTransparency) / 100;
+const OverlayImageImg = (props: { image: OverlayImage; imageUrl: string }) => {
+    const windowSize = useSignal(windowInnerSize);
+    const topLeftGameCoords = useSignal(viewCenterSignal);
     const viewScale = useSignal(viewScaleSignal);
-
-    if (!imageUrl) return <div>missing image url</div>;
+    const screenOffset = createMemo(() => gameCoordsToScreen(props.image.location, windowSize(), topLeftGameCoords(), viewScale()));
+    const opacity1to100 = useSignal(overlayTransparencySignal);
 
     return (
         <img
             alt=""
-            class={classes.overlayImage}
-            src={imageUrl}
+            class="pointer-events-none absolute left-0 top-0 origin-top-left"
+            src={props.imageUrl}
             style={{
-                opacity,
+                'image-rendering': 'pixelated',
+                opacity: opacity1to100() / 100,
                 transform: `scale(${viewScale.toString()})`,
-                left: leftOffset.toString(),
-                top: topOffset.toString(),
+                left: screenOffset().clientX.toString(),
+                top: screenOffset().clientY.toString(),
             }}
         />
     );
 };
 
-const OverlayImage: React.FC = () => {
-    const shouldShowImageFromData = useAppSelector(selectShouldShowImageFromData);
-    const shouldShowImageFromUrl = useAppSelector(selectShouldShowImageFromUrl);
+function OverlayImageRender(props: { imageId: number }) {
+    const imagesById = useSignal(overlayImagesById);
+    const image = createMemo(() => imagesById()[props.imageId]);
+    const loadedImageElementNested = createMemo(() => {
+        const img = image();
+        if (img) return useLoadImageElement(() => img.imageFile);
+    });
+    const fileUrlNested = createMemo(() => {
+        const img = image();
+        if (img) return useImageFileUrl(() => img.imageFile);
+    });
+    const fileUrl = createMemo(() => fileUrlNested()?.());
+    const loadedImageElement = createMemo(() => loadedImageElementNested()?.());
 
-    if (shouldShowImageFromData) return <OverlayImageCanvas />;
-    if (shouldShowImageFromUrl) return <OverlayImageImg />;
-    return <PlaceQueuePixels />;
-};
+    const renderData = createMemo<
+        | { type: 'empty' }
+        | { type: 'canvas'; data: { image: OverlayImage; imgEl: HTMLImageElement } }
+        | { type: 'img'; data: { image: OverlayImage; url: string } }
+        | {
+              type: 'error';
+              data: {
+                  error: string;
+              };
+          }
+    >(() => {
+        const imgData = image();
+        if (!imgData)
+            return {
+                type: 'empty',
+            } as const;
+        const loadedImgEl = loadedImageElement();
+        if (loadedImgEl?.state === 'ready')
+            return {
+                type: 'canvas',
+                data: {
+                    image: imgData,
+                    imgEl: loadedImgEl.result,
+                },
+            } as const;
+        const fUrl = fileUrl();
+        if (fUrl)
+            return {
+                type: 'img',
+                data: {
+                    url: fUrl,
+                    image: imgData,
+                },
+            } as const;
+        if (imgData.imageFile.type === 'url')
+            return {
+                type: 'img',
+                data: {
+                    url: imgData.imageFile.url,
+                    image: imgData,
+                },
+            } as const;
+        return {
+            type: 'error',
+            data: {
+                error: 'Unknown image state',
+            } as const,
+        };
+    });
 
-export default OverlayImage;
+    return (
+        <>
+            <Show
+                when={(() => {
+                    const d = renderData();
+                    return d.type === 'canvas' ? d : false;
+                })()}
+            >
+                {(renderData) => <OverlayImageCanvas image={renderData().data.image} loadedImageElement={renderData().data.imgEl} />}
+            </Show>
+            <Show
+                when={(() => {
+                    const d = renderData();
+                    return d.type === 'img' ? d : false;
+                })()}
+            >
+                {(renderData) => <OverlayImageImg image={renderData().data.image} imageUrl={renderData().data.url} />}
+            </Show>
+            <Show
+                when={(() => {
+                    const d = renderData();
+                    return d.type === 'error' ? d : false;
+                })()}
+            >
+                {(renderData) => <div>Failed load overlay image! {renderData().data.error}</div>}
+            </Show>
+        </>
+    );
+}
+
+export function OverlayImages() {
+    const images = useSignal(visibleOnScreenOverlayImages);
+    return <For each={images()}>{(image) => <OverlayImageRender imageId={image.id} />}</For>;
+}

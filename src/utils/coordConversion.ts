@@ -1,5 +1,11 @@
 import { Cell } from '../store/slices/gameSlice';
 
+export function screenToGameCoords(screen: { clientX: number; clientY: number }, windowSize: { height: number; width: number }, viewCenter: Cell, viewScale: number) {
+    const gameCoordsX = (screen.clientX - windowSize.width / 2) / viewScale + viewCenter.x;
+    const gameCoordsY = (screen.clientY - windowSize.height / 2) / viewScale + viewCenter.y;
+    return { x: gameCoordsX, y: gameCoordsY };
+}
+
 export function gameCoordsToScreen(gameCoords: Cell, windowSize: { height: number; width: number }, viewCenter: Cell, viewScale: number) {
     const gameCoordsOffsetX = gameCoords.x - viewCenter.x;
     const gameCoordsOffsetY = gameCoords.y - viewCenter.y;

@@ -41,6 +41,7 @@
         "prettier-plugin-tailwindcss": "^0.6.5",
         "rimraf": "4.1.2",
         "rollup-plugin-visualizer": "5.9.0",
+        "solid-devtools": "^0.30.1",
         "tailwindcss": "^3.4.4",
         "ts-loader": "9.4.2",
         "typescript": "^5.5.3",
@@ -80,6 +81,7 @@
         "redux-persist": "^6.0.0",
         "reselect": "^4.1.7",
         "signal-polyfill": "^0.1.1",
+        "solid-js": "^1.8.18",
         "tss-react": "^4.6.0"
     }
 }

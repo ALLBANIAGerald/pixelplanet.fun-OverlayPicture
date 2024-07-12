@@ -11,7 +11,34 @@ export const pictureConverter = {
         return true;
     },
 
-    async applyModificationsToImageData(colorPalette: [number, number, number][], imageData: ImageData, modifierConvertColors: boolean, brightenBy: number, modifierSmolPixels: boolean) {
+    applySmallPixelsModifier(imageData: ImageData) {
+        const smallPixelsMultiplier = 3;
+        const smallPixelsImageData = new ImageData(imageData.width * smallPixelsMultiplier, imageData.height * smallPixelsMultiplier);
+        for (let outY = 0; outY < imageData.height; outY++) {
+            for (let outX = 0; outX < imageData.width; outX++) {
+                // eslint-disable-next-line no-bitwise
+                const outIdx = (imageData.width * outY + outX) << 2;
+
+                const outR = imageData.data[outIdx + 0] ?? 0;
+                const outG = imageData.data[outIdx + 1] ?? 0;
+                const outB = imageData.data[outIdx + 2] ?? 0;
+                const outA = imageData.data[outIdx + 3] ?? 0;
+
+                const smallX = outX * smallPixelsMultiplier + Math.floor(smallPixelsMultiplier / 2);
+                const smallY = outY * smallPixelsMultiplier + Math.floor(smallPixelsMultiplier / 2);
+                // eslint-disable-next-line no-bitwise
+                const smallIdx = (smallY * smallPixelsImageData.width + smallX) << 2;
+
+                smallPixelsImageData.data[smallIdx + 0] = outR;
+                smallPixelsImageData.data[smallIdx + 1] = outG;
+                smallPixelsImageData.data[smallIdx + 2] = outB;
+                smallPixelsImageData.data[smallIdx + 3] = outA;
+            }
+        }
+        return smallPixelsImageData;
+    },
+
+    async applyModificationsToImageData(colorPalette: [number, number, number][], imageData: ImageData, modifierConvertColors: boolean, brightenBy: number) {
         return new Promise<ImageData>((resolve) => {
             const outImageData = new ImageData(imageData.width, imageData.height);
             outImageData.data.set(imageData.data);
@@ -45,33 +72,6 @@ export const pictureConverter = {
                         }
                     }
                 }
-            }
-            if (modifierSmolPixels) {
-                const smolPixelsMultiplier = 3;
-                const smolPixelsImageData = new ImageData(outImageData.width * smolPixelsMultiplier, outImageData.height * smolPixelsMultiplier);
-                for (let outY = 0; outY < outImageData.height; outY++) {
-                    for (let outX = 0; outX < outImageData.width; outX++) {
-                        // eslint-disable-next-line no-bitwise
-                        const outIdx = (outImageData.width * outY + outX) << 2;
-
-                        const outR = outImageData.data[outIdx + 0] ?? 0;
-                        const outG = outImageData.data[outIdx + 1] ?? 0;
-                        const outB = outImageData.data[outIdx + 2] ?? 0;
-                        const outA = outImageData.data[outIdx + 3] ?? 0;
-
-                        const smolX = outX * smolPixelsMultiplier + Math.floor(smolPixelsMultiplier / 2);
-                        const smolY = outY * smolPixelsMultiplier + Math.floor(smolPixelsMultiplier / 2);
-                        // eslint-disable-next-line no-bitwise
-                        const smolIdx = (smolY * smolPixelsImageData.width + smolX) << 2;
-
-                        smolPixelsImageData.data[smolIdx + 0] = outR;
-                        smolPixelsImageData.data[smolIdx + 1] = outG;
-                        smolPixelsImageData.data[smolIdx + 2] = outB;
-                        smolPixelsImageData.data[smolIdx + 3] = outA;
-                    }
-                }
-                resolve(smolPixelsImageData);
-                return;
             }
             resolve(outImageData);
         });
