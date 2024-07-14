@@ -59,6 +59,7 @@
         "@mui/icons-material": "^5.11.0",
         "@mui/material": "^5.11.7",
         "@reduxjs/toolkit": "^1.9.2",
+        "@tanstack/solid-query": "^5.51.2",
         "@types/offscreencanvas": "^2019.7.0",
         "beautiful-react-hooks": "^3.12.2",
         "color-string": "^1.9.1",

@@ -1,19 +1,11 @@
 import { useEffect } from 'react';
-import { useAppDispatch, useAppSelector } from 'store/hooks';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
 
 import { createAsyncThunk } from '@reduxjs/toolkit';
 
 import { pictureConverterApi, tryReadingImageData } from '../pictureConversionApi';
 import { selectCanvasUserPalette } from '../store/slices/gameSlice';
-import {
-    OverlaySavedConfigurationState,
-    selectInputFile,
-    selectInputImageData,
-    selectInputUrl,
-    selectModifierImageBrightness,
-    selectModifierShouldConvertColors,
-    selectModifierSmolPixels,
-} from '../store/slices/overlaySlice';
+import { OverlaySavedConfigurationState, selectInputFile, selectInputImageData, selectInputUrl, selectModifierImageBrightness, selectModifierSmolPixels } from '../store/slices/overlaySlice';
 import type { RootState } from '../store/store';
 import { delay } from '../utils/promiseUtils';
 

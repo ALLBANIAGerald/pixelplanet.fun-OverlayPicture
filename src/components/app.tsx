@@ -1,18 +1,8 @@
 import type { EventEmitter } from 'events';
-import { webSocketEvents } from '../gameInjection/webSockets/webSocketEvents';
-import React, { useCallback, useEffect, useState } from 'react';
-import { chunkDataSlice } from '../store/slices/chunkDataSlice';
 import { useSignal } from '../store/useSignal';
-
-import { loadSavedConfigurations, startProcessingOutputImage, useReadingInputImageProcess } from '../actions/imageProcessing';
-import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { selectCanvasUserPalette } from '../store/slices/gameSlice';
-import { isOverlayEnabledSignal, selectInputImageData, selectInputUrl, selectModifierImageBrightness, selectModifierShouldConvertColors, selectModifierSmolPixels } from '../store/slices/overlaySlice';
-import { selectPageStateCanvasPalette } from '../utils/getPageReduxStore';
-
-import ConfigurationModal from './configurationModal/configurationModal';
+import { isOverlayEnabledSignal } from '../store/slices/overlaySlice';
 import { OverlayImages } from './overlayImage/overlayImage';
-import { Show } from 'solid-js';
+import { createEffect, Show } from 'solid-js';
 
 declare global {
     interface Window {
@@ -20,17 +10,17 @@ declare global {
     }
 }
 
-function useWebSocketEvents() {
-    const dispatch = useAppDispatch();
-    useEffect(() => webSocketEvents.on('pixelUpdate', (data) => dispatch(chunkDataSlice.actions.setPixel(data))), [dispatch]);
-}
+// function useWebSocketEvents() {
+//     const dispatch = useAppDispatch();
+//     createEffect(() => webSocketEvents.on('pixelUpdate', (data) => dispatch(chunkDataSlice.actions.setPixel(data))), [dispatch]);
+// }
 
 function useGlobalKeyShortcuts() {
     const isOverlayEnabled = useSignal(isOverlayEnabledSignal);
-    const handleToggleOverlay = useCallback(() => {
+    const handleToggleOverlay = () => {
         isOverlayEnabledSignal[1](!isOverlayEnabled);
-    }, [isOverlayEnabled]);
-    useEffect(() => {
+    };
+    createEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
             const { target } = event;
             if (!target) {
@@ -65,53 +55,24 @@ function useGlobalKeyShortcuts() {
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [handleToggleOverlay]);
+    });
 }
-
-function useLoadSavedConfigurations() {
-    const dispatch = useAppDispatch();
-    useEffect(() => {
-        dispatch(loadSavedConfigurations());
-    }, [dispatch]);
-}
-
-function useReprocessOutputImage() {
-    const dispatch = useAppDispatch();
-    const url = useAppSelector(selectInputUrl);
-    const palette = useSignal(selectCanvasUserPalette);
-    const modifierShouldConvertColors = useAppSelector(selectModifierShouldConvertColors);
-    const modifierImageBrightness = useAppSelector(selectModifierImageBrightness);
-    const modifierSmolPixels = useAppSelector(selectModifierSmolPixels);
-    const inputImageData = useAppSelector(selectInputImageData);
-    useEffect(() => {
-        dispatch(startProcessingOutputImage());
-        // If anything changes, restart processing
-    }, [dispatch, url, palette, modifierShouldConvertColors, modifierImageBrightness, modifierSmolPixels, inputImageData]);
-}
-
-const ProviderPageStateMapper: React.FC<React.PropsWithChildren> = ({ children }) => {
-    useReprocessOutputImage();
-    useGlobalKeyShortcuts();
-    useLoadSavedConfigurations();
-    useWebSocketEvents();
-    useReadingInputImageProcess();
-    return <>{children}</>;
-};
 
 const App = () => {
+    useGlobalKeyShortcuts();
+    // useWebSocketEvents();
+
     const isOverlayEnabled = useSignal(isOverlayEnabledSignal);
 
-    const [isPageLoaded, setIsPageLoaded] = useState(false);
+    // const [isPageLoaded, setIsPageLoaded] = createSignal(false);
 
     // When palette loads consider page loaded.
     // Sometimes userscript might finish loading sooner than page
-    const palette = useSignal(selectPageStateCanvasPalette);
-    useEffect(() => {
-        if (!palette.length) return;
-        setIsPageLoaded(true);
-    }, [palette]);
-
-    if (!isPageLoaded) return null;
+    // const palette = useSignal(selectPageStateCanvasPalette);
+    // createEffect(() => {
+    //     if (!palette.length) return;
+    //     setIsPageLoaded(true);
+    // });
 
     return (
         <div>
@@ -119,7 +80,7 @@ const App = () => {
             <Show when={isOverlayEnabled()}>
                 <OverlayImages />
             </Show>
-            <ConfigurationModal />
+            {/* <ConfigurationModal /> */}
             {/* </ProviderPageStateMapper> */}
         </div>
     );

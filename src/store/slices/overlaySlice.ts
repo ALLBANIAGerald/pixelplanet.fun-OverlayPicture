@@ -1,16 +1,13 @@
 import colorConverter from '../../colorConverter';
 import logger from '../../handlers/logger';
 import localforage from 'localforage';
-import { useEffect, useState } from 'react';
 import { Signal } from 'signal-polyfill';
-import { effect } from '../../store/effect';
 import { getStoredValue } from '../../store/getStoredData';
 import { selectPageStateCanvasId, selectPageStateCanvasPalette, selectPageStateCanvasReservedColors } from '../../utils/getPageReduxStore';
 import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
 
 import { createSelector, createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-import { clearInputImageAction, loadSavedConfigurations, setInputImageAction } from '../../actions/imageProcessing';
 import { RootState } from '../store';
 
 import { hoverPixelSignal, viewCenterSignal, viewScaleSignal } from './gameSlice';
@@ -116,19 +113,6 @@ export const overlaySlice = createSlice({
                 savedConfigurations.splice(savedConfigurations.indexOf(existingConfiguration), 1);
             }
         },
-    },
-    extraReducers: (builder) => {
-        builder.addCase(setInputImageAction.fulfilled, (state, action) => {
-            state.overlayImage.inputImage.url = action.payload.url;
-            state.overlayImage.inputImage.file = action.payload.file;
-        });
-        builder.addCase(clearInputImageAction.fulfilled, (state) => {
-            state.overlayImage.inputImage.file = undefined;
-            state.overlayImage.inputImage.url = undefined;
-        });
-        builder.addCase(loadSavedConfigurations.fulfilled, (state, action) => {
-            state.savedConfigs = action.payload;
-        });
     },
 });
 
@@ -291,15 +275,14 @@ export const selectCurrentStateAsConfiguration = createSelector(
     selectPlacementTransparency,
     selectPlacementAutoSelectColor,
     selectModifierImageBrightness,
-    selectModifierShouldConvertColors,
-    (inputUrl, xOffset, yOffset, transparency, autoSelectColor, imageBrightness, shouldConvertColors): OverlaySavedConfigurationState | undefined => {
+    (inputUrl, xOffset, yOffset, transparency, autoSelectColor, imageBrightness): OverlaySavedConfigurationState | undefined => {
         if (!inputUrl) return undefined;
         return {
             imageUrl: inputUrl,
             modifiers: {
                 autoSelectColor,
                 imageBrightness,
-                shouldConvertColors,
+                shouldConvertColors: true, //shouldConvertColors,
             },
             placementConfiguration: {
                 xOffset,
@@ -419,7 +402,7 @@ export const overlayImagesSignal = persistedSignal<OverlayImage[]>([], 'overlayI
 export const overlayTransparencySignal = new Signal.State(90);
 export const isFollowMouseActiveSignal = new Signal.State(false);
 export const isAutoSelectColorActiveSignal = new Signal.State(false);
-export const isShowSmallPixelsActiveSignal = new Signal.State(false);
+export const isShowSmallPixelsActiveSignal = new Signal.State(true);
 
 export type StoredSignal<T> = [() => T, (newValue: T) => void];
 
@@ -474,9 +457,10 @@ export const visibleOnScreenOverlayImages = new Signal.Computed(() => {
     const viewCenter = viewCenterSignal.get();
     const viewScale = viewScaleSignal.get();
     return imagesOnCurrentCanvas.get().filter((x) => {
-        const screenCoords = gameCoordsToScreen({ x: x.location.x, y: x.location.y }, windowSize, viewCenter, viewScale);
-        if (screenCoords.clientX + x.size.width < 0 || screenCoords.clientY + x.size.height < 0) return false;
-        if (screenCoords.clientX > windowSize.width || screenCoords.clientY > windowSize.height) return false;
+        const screenCoordsTopLeft = gameCoordsToScreen({ x: x.location.x, y: x.location.y }, windowSize, viewCenter, viewScale);
+        const screenCoordsBottomRight = gameCoordsToScreen({ x: x.location.x + x.size.width, y: x.location.y + x.size.height }, windowSize, viewCenter, viewScale);
+        if (screenCoordsBottomRight.clientX < 0 || screenCoordsBottomRight.clientY < 0) return false;
+        if (screenCoordsTopLeft.clientX > windowSize.width || screenCoordsTopLeft.clientY > windowSize.height) return false;
         return true;
     });
 });

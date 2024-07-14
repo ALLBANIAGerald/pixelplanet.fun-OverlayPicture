@@ -4,6 +4,7 @@ import { viewPortTouchClientCoordinatesSignal } from '../../gameInjection/viewpo
 import { Signal } from 'signal-polyfill';
 import { selectPageStateCanvasPalette, selectPageStateCanvasReservedColors, selectPageStateHoverPixel, selectPageStateRoundedCanvasViewCenter } from '../../utils/getPageReduxStore';
 import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
+import { unsafeWindow } from 'vite-plugin-monkey/dist/client';
 
 export interface Cell {
     x: number;
@@ -20,16 +21,16 @@ export const selectCanvasUserPalette = new Signal.Computed(() => {
 });
 
 let definedSetter = false;
-const pixelPlanetEvents = new Signal.State<EventEmitter | undefined>(window.pixelPlanetEvents, {
+const pixelPlanetEvents = new Signal.State<EventEmitter | undefined>(unsafeWindow.pixelPlanetEvents, {
     [Signal.subtle.watched]: () => {
-        if (!window.pixelPlanetEvents) {
+        if (!unsafeWindow.pixelPlanetEvents) {
             definedSetter = true;
-            Object.defineProperty(window, 'pixelPlanetEvents', {
+            Object.defineProperty(unsafeWindow, 'pixelPlanetEvents', {
                 set: (v) => {
                     definedSetter = false;
-                    delete window.pixelPlanetEvents;
+                    delete unsafeWindow.pixelPlanetEvents;
                     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- workaround if events not initialized yet
-                    window.pixelPlanetEvents = v;
+                    unsafeWindow.pixelPlanetEvents = v;
                 },
                 configurable: true,
             });
@@ -38,19 +39,20 @@ const pixelPlanetEvents = new Signal.State<EventEmitter | undefined>(window.pixe
 
         queueMicrotask(() => {
             if (!pixelPlanetEvents.get()) {
-                pixelPlanetEvents.set(window.pixelPlanetEvents);
+                pixelPlanetEvents.set(unsafeWindow.pixelPlanetEvents);
             }
         });
     },
     [Signal.subtle.unwatched]: () => {
         if (definedSetter) {
-            delete window.pixelPlanetEvents;
+            delete unsafeWindow.pixelPlanetEvents;
         }
     },
 });
 
 function createViewCenterSignal(events: EventEmitter) {
     const processSetViewCoordinates = (viewCenterArray: unknown) => {
+        // console.log('processSetViewCoordinates', viewCenterArray);
         if (!viewCenterArray) return;
         if (!Array.isArray(viewCenterArray)) return;
         if (viewCenterArray.length < 2) return;

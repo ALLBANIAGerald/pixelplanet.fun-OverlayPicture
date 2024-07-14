@@ -1,4 +1,4 @@
-import logger from 'handlers/logger';
+import logger from '../../handlers/logger';
 import { createNanoEvents } from 'nanoevents';
 
 import { pixelReturnPacket } from './packets/pixelReturn';

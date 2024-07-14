@@ -1,9 +1,13 @@
 import App from './app';
+import { QueryClient, QueryClientProvider } from '@tanstack/solid-query';
 
 const AppProvidersWrapper = () => {
+    const client = new QueryClient();
     return (
         <>
-            <App></App>
+            <QueryClientProvider client={client}>
+                <App></App>
+            </QueryClientProvider>
             {/* <Provider store={appStore}>
             <ThemeProvider theme={theme}>
                 <ScopedCssBaseline>

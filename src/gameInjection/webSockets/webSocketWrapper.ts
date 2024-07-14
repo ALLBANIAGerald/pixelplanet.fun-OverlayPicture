@@ -1,6 +1,6 @@
 import { createNanoEvents } from 'nanoevents';
-import { selectPixelPlaceQueueEnabled } from 'store/slices/pixelPlacementSlice';
-import { store } from 'store/store';
+import { selectPixelPlaceQueueEnabled } from '../../store/slices/pixelPlacementSlice';
+import { store } from '../../store/store';
 
 import { pixelReturnPacket, PixelUpdateReturnCode } from './packets/pixelReturn';
 import { pixelUpdatePacket } from './packets/pixelUpdate';

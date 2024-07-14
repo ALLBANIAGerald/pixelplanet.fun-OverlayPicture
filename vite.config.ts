@@ -1,18 +1,19 @@
 import { defineConfig } from 'vite';
 import monkey from 'vite-plugin-monkey';
 import solidPlugin from 'vite-plugin-solid';
-import devtools from 'solid-devtools/vite';
+// import devtools from 'solid-devtools/vite';
 import pkg from './package.json';
 
 // https://vitejs.dev/config/
 export default defineConfig((configEnv) => ({
     plugins: [
-        devtools(),
+        // devtools(),
         solidPlugin(),
         monkey({
             entry: 'src/index.tsx',
             userscript: {
                 name: pkg.displayName,
+                'inject-into': 'page',
                 icon: 'https://vitejs.dev/logo.svg',
                 namespace: 'https://github.com/Woyken/pixelplanet.fun-OverlayPicture',
                 version: pkg.version,
@@ -24,4 +25,7 @@ export default defineConfig((configEnv) => ({
             },
         }),
     ],
+    build: {
+        sourcemap: true,
+    },
 }));

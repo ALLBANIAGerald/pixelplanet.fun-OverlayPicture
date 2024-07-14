@@ -49,7 +49,9 @@ async function loadImageDrawOnCanvasGetData(url: string, abortSignal: AbortSigna
                     .then((blob) => new File([blob], 'image.png', { type: 'image/png' }))
                     .then((file) =>
                         loadImageDrawOnCanvasGetData(URL.createObjectURL(file), abortSignal) //
-                            .finally(() => { URL.revokeObjectURL(url); })
+                            .finally(() => {
+                                URL.revokeObjectURL(url);
+                            })
                     )
                     .then(resolve);
             }

@@ -24,7 +24,7 @@
         "noEmit": true,
         // "baseUrl": "src",
         "noUncheckedIndexedAccess": true,
-        "isolatedModules": true,
+        "isolatedModules": true
     },
     "exclude": ["node_modules", "dist"]
 }

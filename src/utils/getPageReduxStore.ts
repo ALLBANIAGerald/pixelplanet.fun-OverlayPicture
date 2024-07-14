@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { AnyAction, Store } from 'redux';
+import { Store } from 'redux';
 import { Signal } from 'signal-polyfill';
-import { useSignal } from 'store/useSignal';
+import { useSignal } from '../store/useSignal';
 
 import { createSelector } from '@reduxjs/toolkit';
 
@@ -122,28 +122,28 @@ type TypedUseSelectorHookWithUndefined<TState> = <TSelected>(selector: (state: T
 /**
  * Hacky useSelector hook to work for the custom page store
  */
-export const usePageReduxStoreSelector: TypedUseSelectorHookWithUndefined<PageState> = (selector) => {
-    const store = useSignal(pageReduxStoreSignal);
-    const [selectedResult, setSelectedResult] = useState<ReturnType<typeof selector>>();
-    useEffect(() => {
-        if (store.type !== 'success') return undefined;
+// export const usePageReduxStoreSelector: TypedUseSelectorHookWithUndefined<PageState> = (selector) => {
+//     const store = useSignal(pageReduxStoreSignal);
+//     const [selectedResult, setSelectedResult] = useState<ReturnType<typeof selector>>();
+//     useEffect(() => {
+//         if (store.type !== 'success') return undefined;
 
-        setSelectedResult(selector(store.store.getState()));
+//         setSelectedResult(selector(store.store.getState()));
 
-        const unsubscribe = store.store.subscribe(() => {
-            setSelectedResult(selector(store.store.getState()));
-        });
+//         const unsubscribe = store.store.subscribe(() => {
+//             setSelectedResult(selector(store.store.getState()));
+//         });
 
-        return () => unsubscribe();
-    }, [store, selector]);
-    return selectedResult;
-};
+//         return () => unsubscribe();
+//     }, [store, selector]);
+//     return selectedResult;
+// };
 
-export const usePageReduxStoreDispatch = () => {
-    const store = useSignal(pageReduxStoreSignal);
-    if (store.type !== 'success') return undefined;
-    return store.store.dispatch;
-};
+// export const usePageReduxStoreDispatch = () => {
+//     const store = useSignal(pageReduxStoreSignal);
+//     if (store.type !== 'success') return undefined;
+//     return store.store.dispatch;
+// };
 
 export function pageReduxStoreSelectColorAction(colorIndex: number) {
     return {
