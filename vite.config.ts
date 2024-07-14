@@ -20,6 +20,7 @@ export default defineConfig((configEnv) => ({
                 author: pkg.author,
                 match: ['https://pixelplanet.fun/*', 'https://fuckyouarkeros.fun/*', 'https://github.com/Woyken/pixelplanet.fun-OverlayPicture/*'],
                 downloadURL: 'https://woyken.github.io/pixelplanet.fun-OverlayPicture/pixelPlanetOverlay-loader.user.js',
+                updateURL: 'https://woyken.github.io/pixelplanet.fun-OverlayPicture/pixelPlanetOverlay-loader.user.js',
             },
         }),
     ],
