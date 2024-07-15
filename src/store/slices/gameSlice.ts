@@ -89,7 +89,9 @@ export const viewScaleSignal = createSignalComputedNested(() => {
 });
 
 const touchHoverPixelSignal = createSignalComputed(() => {
-    const { clientX, clientY, timestamp } = viewPortTouchClientCoordinatesSignal.get();
+    const touchClientCoordinates = viewPortTouchClientCoordinatesSignal.get();
+    if (!touchClientCoordinates) return;
+    const { clientX, clientY, timestamp } = touchClientCoordinates;
     const { height, width } = windowInnerSize.get();
     const viewScale = viewScaleSignal.get();
     const viewCenter = viewCenterSignal.get();

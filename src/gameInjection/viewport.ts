@@ -1,164 +1,94 @@
-import { createNanoEvents } from 'nanoevents';
-import { Signal } from 'signal-polyfill';
-
 import logger from '../handlers/logger';
+import { createSignalComputed, createSignalState } from '../utils/signalPrimitives/createSignal';
+import { documentBody } from '../utils/signalPrimitives/documentBody';
+import { createSignalComputedNested } from '../utils/signalPrimitives/createSignalComputedNested';
 
-interface Events {
-    touchStartPassive: (event: TouchEvent, canvas: HTMLCanvasElement) => void;
-    mouseMovePassive: (e: MouseEvent, canvas: HTMLCanvasElement) => void;
-    mouseUpPassive: (e: MouseEvent, canvas: HTMLCanvasElement) => void;
-    mouseDownPassive: (e: MouseEvent, canvas: HTMLCanvasElement) => void;
-    wheelPassive: (e: WheelEvent, canvas: HTMLCanvasElement) => void;
-    mouseDownCaptured: (e: MouseEvent, canvas: HTMLCanvasElement) => void;
+function isViewportElement(element: HTMLElement): boolean {
+    if (element.tagName.toUpperCase() !== 'CANVAS') return false;
+    if (!element.className.includes('viewport')) return false;
+    return true;
 }
 
-export const viewPortEvents = createNanoEvents<Events>();
+const viewPortSignal = createSignalComputedNested(() => {
+    const body = documentBody.get();
+    if (!body) return;
+    const canvases = body.getElementsByTagName('canvas');
+    return createSignalState<HTMLCanvasElement | undefined>(undefined, (s) => {
+        queueMicrotask(() => {
+            const viewport = Array.from(canvases).find((c) => isViewportElement(c) && s.get() !== c);
+            if (viewport !== s.get()) s.set(viewport);
+        });
 
-class Viewport {
-    public currentActiveViewport: HTMLCanvasElement | undefined;
-
-    public constructor() {
-        logger.log('Trying to find viewport...');
-        // Initial find of the viewport
-        const canvases = document.getElementsByTagName('canvas');
-        const viewport = Array.from(canvases).find((c) => Viewport.isViewportElement(c) && this.currentActiveViewport !== c);
-        if (viewport) {
-            logger.log('Viewport found.');
-            this.resetViewport(viewport);
-        }
-
-        if (!this.currentActiveViewport) {
-            logger.log('Viewport not found...');
-        }
-
-        // Subscribe to DOM changes on body to react if viewport gets recreated.
-        const mutationObserver = new MutationObserver(this.onMutationEvent);
-        mutationObserver.observe(document.body, { childList: true });
-        // Not bothering with disconnecting observer, since we need to watch this all the time.
-
-        document.addEventListener('mousedown', this.onMouseDownDocumentCaptureHook, true);
-    }
-
-    private onMutationEvent = (mutations: MutationRecord[]): void => {
-        mutations.forEach((mutation) => {
-            if (mutation.type !== 'childList') {
-                // We are only looking for canvas changes.
-                return;
-            }
-            mutation.removedNodes.forEach((node) => {
-                if (node === this.currentActiveViewport) {
-                    logger.log('Active viewport was removed');
-                    // our viewport was just removed, clean it up.
-                    this.removeHooks();
-                    this.currentActiveViewport = undefined;
-                }
-            });
-            mutation.addedNodes.forEach((node) => {
-                if (node.nodeName.toUpperCase() !== 'CANVAS') {
-                    // Don't care about everything except if it's canvas element.
+        const onMutationEvent = (mutations: MutationRecord[]): void => {
+            mutations.forEach((mutation) => {
+                if (mutation.type !== 'childList') {
+                    // We are only looking for canvas changes.
                     return;
                 }
-                const canvasNode = node as HTMLCanvasElement;
-                if (Viewport.isViewportElement(canvasNode)) {
-                    logger.log('Active viewport was added');
-                    this.resetViewport(canvasNode);
-                }
+                mutation.removedNodes.forEach((node) => {
+                    if (node === s.get()) {
+                        logger.log('Active viewport was removed');
+                        // our viewport was just removed, clean it up.
+                        s.set(undefined);
+                    }
+                });
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeName.toUpperCase() !== 'CANVAS') {
+                        // Don't care about everything except if it's canvas element.
+                        return;
+                    }
+                    const canvasNode = node as HTMLCanvasElement;
+                    if (isViewportElement(canvasNode)) {
+                        logger.log('Active viewport was added');
+                        s.set(canvasNode);
+                    }
+                });
             });
+        };
+
+        const observer = new MutationObserver(onMutationEvent);
+        observer.observe(document, { childList: true, subtree: true });
+
+        return () => {
+            observer.disconnect();
+            queueMicrotask(() => {
+                s.set(undefined);
+            });
+        };
+    });
+});
+
+function addViewPortPassiveEventSignal<K extends keyof HTMLElementEventMap>(eventKey: K) {
+    const viewPortSignalOnTouchStartHookPassiveSignal = createSignalComputedNested(() => {
+        const viewPort = viewPortSignal.get();
+        if (!viewPort) return;
+        return createSignalState<HTMLElementEventMap[K] | undefined>(undefined, (s) => {
+            const handler = (e: HTMLElementEventMap[K]) => {
+                s.set(e);
+            };
+            viewPort.addEventListener(eventKey, handler, { passive: true });
+            return () => {
+                queueMicrotask(() => {
+                    s.set(undefined);
+                });
+                viewPort.removeEventListener(eventKey, handler);
+            };
         });
-    };
-
-    private static isViewportElement(element: HTMLElement): boolean {
-        if (element.tagName.toUpperCase() !== 'CANVAS') return false;
-        if (!element.className.includes('viewport')) return false;
-        return true;
-    }
-
-    private resetViewport(canvas: HTMLCanvasElement | undefined): void {
-        this.removeHooks();
-        this.currentActiveViewport = canvas;
-        this.initHooks();
-    }
-
-    private initHooks(): void {
-        if (!this.currentActiveViewport) return;
-
-        this.currentActiveViewport.addEventListener('touchstart', this.onTouchStartHookPassive, { passive: true });
-        this.currentActiveViewport.addEventListener('mousemove', this.onMouseMoveHookPassive, { passive: true });
-        this.currentActiveViewport.addEventListener('mousedown', this.onMouseDownHookPassive, { passive: true });
-        this.currentActiveViewport.addEventListener('mouseup', this.onMouseUpHookPassive, { passive: true });
-        this.currentActiveViewport.addEventListener('wheel', this.onWheelHookPassive, { passive: true });
-
-        if (this.currentActiveViewport.onmousedown) {
-            const originalMouseDown = this.currentActiveViewport.onmousedown;
-            this.currentActiveViewport.onmousedown = null;
-            this.currentActiveViewport.addEventListener('mousedown', originalMouseDown);
-        }
-    }
-
-    private removeHooks(): void {
-        this.currentActiveViewport?.removeEventListener('touchstart', this.onTouchStartHookPassive);
-        this.currentActiveViewport?.removeEventListener('mousemove', this.onMouseMoveHookPassive);
-        this.currentActiveViewport?.removeEventListener('mousedown', this.onMouseDownHookPassive);
-        this.currentActiveViewport?.removeEventListener('mouseup', this.onMouseUpHookPassive);
-        this.currentActiveViewport?.removeEventListener('wheel', this.onWheelHookPassive);
-    }
-
-    private onTouchStartHookPassive = (e: TouchEvent) => {
-        if (!this.currentActiveViewport) return;
-        viewPortEvents.emit('touchStartPassive', e, this.currentActiveViewport);
-    };
-
-    private onMouseMoveHookPassive = (e: MouseEvent): void => {
-        if (!this.currentActiveViewport) {
-            return;
-        }
-        viewPortEvents.emit('mouseMovePassive', e, this.currentActiveViewport);
-    };
-
-    private onMouseDownHookPassive = (e: MouseEvent): void => {
-        if (!this.currentActiveViewport) {
-            return;
-        }
-        viewPortEvents.emit('mouseDownPassive', e, this.currentActiveViewport);
-    };
-
-    private onMouseUpHookPassive = (e: MouseEvent): void => {
-        if (!this.currentActiveViewport) {
-            return;
-        }
-        viewPortEvents.emit('mouseUpPassive', e, this.currentActiveViewport);
-    };
-
-    private onWheelHookPassive = (e: WheelEvent): void => {
-        if (!this.currentActiveViewport) {
-            return;
-        }
-        viewPortEvents.emit('wheelPassive', e, this.currentActiveViewport);
-    };
-
-    private onMouseDownDocumentCaptureHook = (e: MouseEvent): void => {
-        if (e.target !== this.currentActiveViewport) return;
-        viewPortEvents.emit('mouseDownCaptured', e, this.currentActiveViewport);
-    };
+    });
+    return viewPortSignalOnTouchStartHookPassiveSignal;
 }
 
-const viewport = new Viewport();
-export default viewport;
+export const viewPortSignalOnTouchStartHookPassiveSignal = addViewPortPassiveEventSignal('touchstart');
+export const viewPortSignalOnMouseMoveHookPassiveSignal = addViewPortPassiveEventSignal('mousemove');
+export const viewPortSignalOnMouseDownHookPassiveSignal = addViewPortPassiveEventSignal('mousedown');
+export const viewPortSignalOnMouseUpHookPassiveSignal = addViewPortPassiveEventSignal('mouseup');
+export const viewPortSignalOnWheelHookPassiveSignal = addViewPortPassiveEventSignal('wheel');
 
-const handleTouchStart = (event: TouchEvent) => {
+export const viewPortTouchClientCoordinatesSignal = createSignalComputed(() => {
+    const event = viewPortSignalOnTouchStartHookPassiveSignal.get();
+    if (!event) return undefined;
     const touches = event.touches[0];
     if (!touches) return;
     const { clientX, clientY } = touches;
-    viewPortTouchClientCoordinatesSignal.set({ clientX, clientY, timestamp: Date.now() });
-};
-
-let viewPortTouchStartPassiveUnsubscribe: (() => void) | undefined;
-export const viewPortTouchClientCoordinatesSignal = new Signal.State(
-    { clientX: 1, clientY: 1, timestamp: 1 },
-    {
-        [Signal.subtle.watched]: () => {
-            viewPortTouchStartPassiveUnsubscribe = viewPortEvents.on('touchStartPassive', handleTouchStart);
-        },
-        [Signal.subtle.unwatched]: () => viewPortTouchStartPassiveUnsubscribe?.(),
-    }
-);
+    return { clientX, clientY, timestamp: Date.now() };
+});
