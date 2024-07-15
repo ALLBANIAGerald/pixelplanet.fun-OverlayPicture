@@ -3,6 +3,7 @@ import monkey from 'vite-plugin-monkey';
 import solidPlugin from 'vite-plugin-solid';
 // import devtools from 'solid-devtools/vite';
 import pkg from './package.json';
+import { readFileSync } from 'fs';
 
 // https://vitejs.dev/config/
 export default defineConfig((configEnv) => ({
@@ -13,8 +14,8 @@ export default defineConfig((configEnv) => ({
             entry: 'src/index.tsx',
             userscript: {
                 name: pkg.displayName,
+                icon: `data:image/png;base64,${readFileSync('./src/assets/thumbnail-small.png', 'base64')}`,
                 'inject-into': 'page',
-                icon: 'https://vitejs.dev/logo.svg',
                 namespace: 'https://github.com/Woyken/pixelplanet.fun-OverlayPicture',
                 version: pkg.version,
                 description: pkg.description,
