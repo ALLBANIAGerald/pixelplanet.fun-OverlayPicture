@@ -13,6 +13,7 @@
 // import { useAppDispatch } from '../../store/hooks';
 // import ConfigDropDown from '../configDropDown/configDropDown';
 // import OverlayConfig from '../overlayConfig/overlayConfig';
+import { Show } from 'solid-js';
 import thumbnail from '../../assets/thumbnail-small.png';
 
 // const makeStyles = createMakeStyles({ useTheme });
@@ -46,8 +47,20 @@ function SmallModal() {
 }
 
 export function ConfigurationModal() {
-    return <SmallModal />;
+    return (
+        <Show when={true} fallback={<SmallModal />}>
+            <BigModal />
+        </Show>
+    );
 }
+
+const BigModal = () => {
+    return (
+        <div class="tw-base tw-absolute tw-right-4 tw-top-4 tw-size-9 tw-border tw-border-solid tw-border-black tw-backdrop-blur">
+            <input type="image" class="tw-size-9" src={thumbnail} />
+        </div>
+    );
+};
 
 // const ConfigurationModal = () => {
 //     const [isModalMinimized, setIsModalMinimized] = React.useState(false);
@@ -104,5 +117,3 @@ export function ConfigurationModal() {
 //         </div>
 //     );
 // };
-
-// export default ConfigurationModal;
