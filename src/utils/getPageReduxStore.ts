@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react';
 import { Store } from 'redux';
-import { Signal } from 'signal-polyfill';
-import { useSignal } from '../store/useSignal';
 
 import { createSelector } from '@reduxjs/toolkit';
+import { createSignalComputedNested } from './signalPrimitives/createSignalComputedNested';
+import { createSignalComputed, createSignalState } from './signalPrimitives/createSignal';
 
 function isStoreFromRedux(store: any) {
     if (typeof store !== 'object') return false;
@@ -29,11 +28,19 @@ function findReactRootContainerEl() {
     return document.getElementById('app');
 }
 
-function findStoreInRoot(el: HTMLElement) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getReactContainer(el: HTMLElement): any {
     const reactContainerName = Object.keys(el).filter((k) => k.startsWith('__reactContainer'))[0];
     if (!reactContainerName) return undefined;
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
     const root = (el as any)[reactContainerName];
+    return root;
+}
+
+function findStoreInRoot(el: HTMLElement) {
+    const root = getReactContainer(el);
+    if (!root) return undefined;
     let checkedReactInternalElement = root;
     while (checkedReactInternalElement.child) {
         const store = getStoreFromReactInternalEl(checkedReactInternalElement);
@@ -51,70 +58,74 @@ export function findPageReduxStore(): Store<PageState> {
     return store;
 }
 
-const reactRootEl = findReactRootContainerEl();
-if (!reactRootEl) {
-    const observer = new MutationObserver(() => {
-        const rootEl = findReactRootContainerEl();
-        if (rootEl) {
-            observer.disconnect();
-            reactRootElSignal.set(rootEl);
-        }
-    });
-    observer.observe(document, { subtree: true });
-}
-const reactRootElSignal = new Signal.State(reactRootEl);
-
-function createPageReduxStoreSignal(rootEl: HTMLElement) {
-    let observer: MutationObserver | undefined;
-    const pageReduxStoreSignal = new Signal.State<{ type: 'success'; store: Store<PageState> } | { type: 'loading' } | { type: 'error'; error: 'window not accessible' }>(
-        { type: 'loading' },
-        {
-            [Signal.subtle.watched]: () => {
-                const store = findStoreInRoot(rootEl);
-                if (store) {
-                    queueMicrotask(() => {
-                        pageReduxStoreSignal.set({ type: 'success', store });
-                    });
+const reactRootElSignal = createSignalState(findReactRootContainerEl(), (s) => {
+    return () => {
+        let observer: MutationObserver | undefined;
+        queueMicrotask(() => {
+            const reactRootEl = s.get();
+            if (!reactRootEl) {
+                const rootEl = findReactRootContainerEl();
+                if (rootEl) {
+                    s.set(rootEl);
                     return;
                 }
-                if (rootEl.childElementCount === 0) {
-                    // React has not loaded yet, wait for React to initialize
-                    observer = new MutationObserver(() => {
-                        if (rootEl) {
-                            const foundStore = findStoreInRoot(rootEl);
-                            if (!foundStore) return;
-                            observer?.disconnect();
-                            queueMicrotask(() => {
-                                pageReduxStoreSignal.set({ type: 'success', store: foundStore });
-                            });
-                        }
-                    });
-                    observer.observe(rootEl, { subtree: true });
-                } else {
-                    // We probably don't have direct access page's `window` instance
-                    queueMicrotask(() => {
-                        pageReduxStoreSignal.set({ type: 'error', error: 'window not accessible' });
-                    });
-                }
-            },
-            [Signal.subtle.unwatched]: () => {
-                observer?.disconnect();
-                observer = undefined;
-            },
-        }
-    );
-    return pageReduxStoreSignal;
-}
+                observer = new MutationObserver(() => {
+                    const rootEl = findReactRootContainerEl();
+                    if (rootEl) {
+                        observer?.disconnect();
+                        reactRootElSignal.set(rootEl);
+                    }
+                });
+                observer.observe(document, { subtree: true });
+            }
+        });
 
-const pageReduxStoreNestedSignal = new Signal.Computed(() => {
-    const rootEl = reactRootElSignal.get();
-    if (!rootEl) return new Signal.Computed(() => ({ type: 'loading' }) as const);
-    return createPageReduxStoreSignal(rootEl);
+        return () => {
+            observer?.disconnect();
+        };
+    };
 });
 
-export const pageReduxStoreSignal = new Signal.Computed(() => {
-    const nested = pageReduxStoreNestedSignal.get();
-    return nested.get();
+const pageReduxStoreSignal = createSignalComputedNested(() => {
+    const rootEl = reactRootElSignal.get();
+    if (!rootEl) return createSignalState({ type: 'loading' } as const);
+    return createSignalState<{ type: 'success'; store: Store<PageState> } | { type: 'loading' } | { type: 'error'; error: 'window not accessible' }>({ type: 'loading' }, (s) => {
+        let observer: MutationObserver | undefined;
+        const store = findStoreInRoot(rootEl);
+        if (store) {
+            queueMicrotask(() => {
+                s.set({ type: 'success', store });
+            });
+            return;
+        }
+        if (rootEl.childElementCount === 0) {
+            // React has not loaded yet, wait for React to initialize
+            observer = new MutationObserver(() => {
+                const foundStore = findStoreInRoot(rootEl);
+                if (!foundStore) return;
+                observer?.disconnect();
+                s.set({ type: 'success', store: foundStore });
+            });
+            observer.observe(rootEl, { childList: true, subtree: true });
+        } else {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            if (!getReactContainer(rootEl).child) {
+                // React has not loaded it's internals yet
+                setTimeout(() => {
+                    const store = findStoreInRoot(rootEl);
+                    if (store) s.set({ type: 'success', store });
+                    else s.set({ type: 'error', error: 'window not accessible' });
+                }, 1000);
+            } else {
+                // We don't have direct access page's `window` instance
+                s.set({ type: 'error', error: 'window not accessible' });
+            }
+        }
+        return () => {
+            observer?.disconnect();
+            observer = undefined;
+        };
+    });
 });
 
 type TypedUseSelectorHookWithUndefined<TState> = <TSelected>(selector: (state: TState) => TSelected, equalityFn?: (left: TSelected, right: TSelected) => boolean) => TSelected | undefined;
@@ -159,38 +170,27 @@ export function setViewCoordinates(view: [number, number]) {
     };
 }
 
-function createLatestStateSignal(store: Store<PageState>) {
-    let unsub: (() => void) | undefined;
-    const latestState = new Signal.State<PageState | undefined>(undefined, {
-        [Signal.subtle.watched]: () => {
-            unsub = store.subscribe(() => {
-                latestState.set(store.getState());
-            });
-        },
-        [Signal.subtle.unwatched]: () => unsub?.(),
-    });
-    return latestState;
-}
-
-const latestStateNestedSignal = new Signal.Computed(() => {
+const latestStateSignal = createSignalComputedNested(() => {
     const store = pageReduxStoreSignal.get();
-    if (store.type !== 'success') return new Signal.Computed<PageState | undefined>(() => undefined);
-    return createLatestStateSignal(store.store);
+    if (store.type !== 'success') return createSignalComputed<PageState | undefined>(() => undefined);
+    return createSignalState<PageState | undefined>(undefined, (s) => {
+        const unsub = store.store.subscribe(() => {
+            s.set(store.store.getState());
+        });
+        return () => {
+            unsub();
+        };
+    });
 });
 
-const latestStateSignal = new Signal.Computed(() => {
-    const nested = latestStateNestedSignal.get();
-    return nested.get();
-});
+export const selectPageStatePixelWaitDate = createSignalComputed(() => latestStateSignal.get()?.user.wait);
 
-export const selectPageStatePixelWaitDate = new Signal.Computed(() => latestStateSignal.get()?.user.wait);
-
-export const selectPageStateCurrentSelectedColor = new Signal.Computed(() => {
+export const selectPageStateCurrentSelectedColor = createSignalComputed(() => {
     const state = latestStateSignal.get();
     return state?.canvas.selectedColor ?? 0;
 });
 
-export const selectPageStateHoverPixel = new Signal.Computed(() => {
+export const selectPageStateHoverPixel = createSignalComputed(() => {
     const state = latestStateSignal.get();
     const x = state?.canvas.hover?.[0];
     const y = state?.canvas.hover?.[1];
@@ -203,7 +203,7 @@ export const selectPageStateViewScale = createSelector(
     (viewScale) => viewScale
 );
 
-export const selectPageStateCanvasViewCenter = new Signal.Computed(() => {
+export const selectPageStateCanvasViewCenter = createSignalComputed(() => {
     const state = latestStateSignal.get();
     const x = state?.canvas.view[0];
     const y = state?.canvas.view[1];
@@ -211,13 +211,13 @@ export const selectPageStateCanvasViewCenter = new Signal.Computed(() => {
     return { x, y };
 });
 
-export const selectPageStateRoundedCanvasViewCenter = new Signal.Computed(() => {
+export const selectPageStateRoundedCanvasViewCenter = createSignalComputed(() => {
     const view = selectPageStateCanvasViewCenter.get();
     if (!view) return undefined;
     return { x: Math.round(view.x), y: Math.round(view.y) };
 });
 
-export const selectPageStateCanvasPalette = new Signal.Computed(() => {
+export const selectPageStateCanvasPalette = createSignalComputed(() => {
     const state = latestStateSignal.get();
     const paletteAbgr = state?.canvas.palette.abgr ?? [];
     return Array.from(new Uint32Array(paletteAbgr)).map<[number, number, number]>((abgr) => {
@@ -231,37 +231,37 @@ export const selectPageStateCanvasPalette = new Signal.Computed(() => {
     });
 });
 
-export const selectPageStateCanvasReservedColors = new Signal.Computed(() => {
+export const selectPageStateCanvasReservedColors = createSignalComputed(() => {
     const state = latestStateSignal.get();
     return state?.canvas.clrIgnore ?? 0;
 });
 
-export const selectPageStateCanvasId = new Signal.Computed(() => {
+export const selectPageStateCanvasId = createSignalComputed(() => {
     const state = latestStateSignal.get();
     return state?.canvas.canvasId ?? '0';
 });
 
-export const selectPageStateCanvasSize = new Signal.Computed(() => {
+export const selectPageStateCanvasSize = createSignalComputed(() => {
     const state = latestStateSignal.get();
     return state?.canvas.canvasSize ?? 1;
 });
 
-const currentCanvas = new Signal.Computed(() => {
+const currentCanvas = createSignalComputed(() => {
     const state = latestStateSignal.get();
     return state?.canvas.canvases[state.canvas.canvasId];
 });
 
-export const selectPageStateCanvasMaxTimeoutMs = new Signal.Computed(() => {
+export const selectPageStateCanvasMaxTimeoutMs = createSignalComputed(() => {
     const canvas = currentCanvas.get();
     return canvas?.cds ?? 100;
 });
 
-export const selectPageStateCanvasTimeoutOnBaseMs = new Signal.Computed(() => {
+export const selectPageStateCanvasTimeoutOnBaseMs = createSignalComputed(() => {
     const canvas = currentCanvas.get();
     return canvas?.bcd ?? 100;
 });
 
-export const selectPaseStateCanvasTimeoutOnPlacedMs = new Signal.Computed(() => {
+export const selectPaseStateCanvasTimeoutOnPlacedMs = createSignalComputed(() => {
     const canvas = currentCanvas.get();
     return canvas?.pcd ?? 100;
 });
@@ -312,7 +312,7 @@ export interface Canvas {
     selectedColor: number;
     view: number[];
     scale: number;
-    canvases: Record<number, Canvase>;
+    canvases: Record<string, Canvase>;
     isHistoricalView: boolean;
     historicalDate: null;
     historicalTime: null;
