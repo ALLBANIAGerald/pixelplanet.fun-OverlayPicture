@@ -1,17 +1,14 @@
-import { Signal } from 'signal-polyfill';
+import { createSignalState } from './createSignal';
 
-const handleWindowResize = () => windowInnerSize.set({ width: window.innerWidth, height: window.innerHeight });
-export const windowInnerSize = new Signal.State(
-    { width: window.innerWidth, height: window.innerHeight },
-    {
-        [Signal.subtle.watched]: () => {
-            queueMicrotask(() => {
-                handleWindowResize();
-            });
-            window.addEventListener('resize', handleWindowResize);
-        },
-        [Signal.subtle.unwatched]: () => {
-            window.removeEventListener('resize', handleWindowResize);
-        },
-    }
-);
+export const windowInnerSize = createSignalState({ width: window.innerWidth, height: window.innerHeight }, (s) => {
+    const handleWindowResize = () => {
+        s.set({ width: window.innerWidth, height: window.innerHeight });
+    };
+    queueMicrotask(() => {
+        handleWindowResize();
+    });
+    window.addEventListener('resize', handleWindowResize);
+    return () => {
+        window.removeEventListener('resize', handleWindowResize);
+    };
+});
