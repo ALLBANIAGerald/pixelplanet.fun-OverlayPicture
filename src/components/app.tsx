@@ -3,6 +3,7 @@ import { useSignal } from '../store/useSignal';
 import { isOverlayEnabledSignal } from '../store/slices/overlaySlice';
 import { OverlayImages } from './overlayImage/overlayImage';
 import { createEffect, Show } from 'solid-js';
+import { ConfigurationModal } from './configurationModal/configurationModal';
 
 declare global {
     interface Window {
@@ -80,7 +81,7 @@ const App = () => {
             <Show when={isOverlayEnabled()}>
                 <OverlayImages />
             </Show>
-            {/* <ConfigurationModal /> */}
+            <ConfigurationModal />
             {/* </ProviderPageStateMapper> */}
         </div>
     );
