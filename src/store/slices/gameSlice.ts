@@ -5,6 +5,7 @@ import { Signal } from 'signal-polyfill';
 import { selectPageStateCanvasPalette, selectPageStateCanvasReservedColors, selectPageStateHoverPixel, selectPageStateRoundedCanvasViewCenter } from '../../utils/getPageReduxStore';
 import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
 import { unsafeWindow } from 'vite-plugin-monkey/dist/client';
+import { createSignalState } from '../../utils/signalPrimitives/createSignal';
 
 export interface Cell {
     x: number;
@@ -20,34 +21,33 @@ export const selectCanvasUserPalette = new Signal.Computed(() => {
     return palette.slice(reservedColorCount);
 });
 
-let definedSetter = false;
-const pixelPlanetEvents = new Signal.State<EventEmitter | undefined>(unsafeWindow.pixelPlanetEvents, {
-    [Signal.subtle.watched]: () => {
-        if (!unsafeWindow.pixelPlanetEvents) {
-            definedSetter = true;
-            Object.defineProperty(unsafeWindow, 'pixelPlanetEvents', {
-                set: (v) => {
-                    definedSetter = false;
-                    delete unsafeWindow.pixelPlanetEvents;
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- workaround if events not initialized yet
-                    unsafeWindow.pixelPlanetEvents = v;
-                },
-                configurable: true,
-            });
-            return;
-        }
-
-        queueMicrotask(() => {
-            if (!pixelPlanetEvents.get()) {
-                pixelPlanetEvents.set(unsafeWindow.pixelPlanetEvents);
-            }
+const pixelPlanetEvents = createSignalState(unsafeWindow.pixelPlanetEvents, (s) => {
+    let definedSetter = false;
+    if (!unsafeWindow.pixelPlanetEvents) {
+        definedSetter = true;
+        Object.defineProperty(unsafeWindow, 'pixelPlanetEvents', {
+            set: (v) => {
+                definedSetter = false;
+                delete unsafeWindow.pixelPlanetEvents;
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- workaround if events not initialized yet
+                unsafeWindow.pixelPlanetEvents = v;
+            },
+            configurable: true,
         });
-    },
-    [Signal.subtle.unwatched]: () => {
+        return;
+    }
+
+    queueMicrotask(() => {
+        if (!s.get()) {
+            s.set(unsafeWindow.pixelPlanetEvents);
+        }
+    });
+
+    return () => {
         if (definedSetter) {
             delete unsafeWindow.pixelPlanetEvents;
         }
-    },
+    };
 });
 
 function createViewCenterSignal(events: EventEmitter) {
