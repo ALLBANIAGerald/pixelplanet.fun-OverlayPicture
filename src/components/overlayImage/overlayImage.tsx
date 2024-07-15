@@ -237,7 +237,7 @@ function OverlayImageCanvasFromImageData(props: { image: OverlayImage; imageData
     return (
         <canvas
             ref={setCanvasRef}
-            class="tw-pointer-events-none tw-absolute tw-left-0 tw-top-0 tw-origin-top-left"
+            class="tw-base tw-pointer-events-none tw-absolute tw-left-0 tw-top-0 tw-origin-top-left"
             style={{
                 'image-rendering': 'pixelated',
                 opacity: transparency() / 100,
@@ -259,7 +259,7 @@ const OverlayImageImg = (props: { image: OverlayImage; imageUrl: string }) => {
     return (
         <img
             alt=""
-            class="tw-pointer-events-none tw-absolute tw-left-0 tw-top-0 tw-origin-top-left"
+            class="tw-base tw-pointer-events-none tw-absolute tw-left-0 tw-top-0 tw-origin-top-left"
             src={props.imageUrl}
             style={{
                 'image-rendering': 'pixelated',

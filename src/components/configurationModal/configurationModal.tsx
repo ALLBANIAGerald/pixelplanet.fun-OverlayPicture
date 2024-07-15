@@ -39,7 +39,7 @@ import thumbnail from '../../assets/thumbnail-small.png';
 
 function SmallModal() {
     return (
-        <div class="tw-absolute tw-right-4 tw-top-4 tw-size-9 tw-border tw-border-solid tw-border-black tw-backdrop-blur">
+        <div class="tw-base tw-absolute tw-right-4 tw-top-4 tw-size-9 tw-border tw-border-solid tw-border-black tw-backdrop-blur">
             <input type="image" class="tw-size-9" src={thumbnail} />
         </div>
     );
