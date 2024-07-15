@@ -5,7 +5,7 @@ import { Signal } from 'signal-polyfill';
 import { selectPageStateCanvasPalette, selectPageStateCanvasReservedColors, selectPageStateHoverPixel, selectPageStateRoundedCanvasViewCenter } from '../../utils/getPageReduxStore';
 import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
 import { unsafeWindow } from 'vite-plugin-monkey/dist/client';
-import { createSignalState } from '../../utils/signalPrimitives/createSignal';
+import { createSignalComputed, createSignalState } from '../../utils/signalPrimitives/createSignal';
 import { createSignalComputedNested } from '../../utils/signalPrimitives/createSignalComputedNested';
 
 export interface Cell {
@@ -16,7 +16,7 @@ export interface Cell {
 /**
  * Filtered out reserved colors from the palette
  */
-export const selectCanvasUserPalette = new Signal.Computed(() => {
+export const selectCanvasUserPalette = createSignalComputed(() => {
     const reservedColorCount = selectPageStateCanvasReservedColors.get();
     const palette = selectPageStateCanvasPalette.get();
     return palette.slice(reservedColorCount);
@@ -51,58 +51,44 @@ const pixelPlanetEvents = createSignalState(unsafeWindow.pixelPlanetEvents, (s) 
     };
 });
 
-function createViewCenterSignal(events: EventEmitter) {
-    const processSetViewCoordinates = (viewCenterArray: unknown) => {
-        // console.log('processSetViewCoordinates', viewCenterArray);
-        if (!viewCenterArray) return;
-        if (!Array.isArray(viewCenterArray)) return;
-        if (viewCenterArray.length < 2) return;
-        if (typeof viewCenterArray[0] !== 'number' || typeof viewCenterArray[1] !== 'number') return;
-        const x = viewCenterArray[0];
-        const y = viewCenterArray[1];
-        viewCenter.set({ x, y });
-    };
-    const viewCenter = new Signal.State(
-        { x: 0, y: 0 },
-        {
-            [Signal.subtle.watched]: () => events.on('setviewcoordinates', processSetViewCoordinates),
-            [Signal.subtle.unwatched]: () => events.off('setviewcoordinates', processSetViewCoordinates),
-        }
-    );
-    return viewCenter;
-}
-
-const viewCenterSignal = createSignalComputedNested(() => {
+export const viewCenterSignal = createSignalComputedNested(() => {
     const events = pixelPlanetEvents.get();
     if (!events) return new Signal.State({ x: 0, y: 0 });
-    return createViewCenterSignal(events);
+    return createSignalState(
+        { x: 0, y: 0 },
+        (s) => {
+            const processSetViewCoordinates = (viewCenterArray: unknown) => {
+                // console.log('processSetViewCoordinates', viewCenterArray);
+                if (!viewCenterArray) return;
+                if (!Array.isArray(viewCenterArray)) return;
+                if (viewCenterArray.length < 2) return;
+                if (typeof viewCenterArray[0] !== 'number' || typeof viewCenterArray[1] !== 'number') return;
+                const x = viewCenterArray[0];
+                const y = viewCenterArray[1];
+                s.set({ x, y });
+            };
+            events.on('setviewcoordinates', processSetViewCoordinates);
+            return () => events.off('setviewcoordinates', processSetViewCoordinates);
+        },
+        (a, b) => a.x === b.x && a.y === b.y
+    );
 });
 
-function createViewScaleSignal(events: EventEmitter) {
-    const processSetScale = (scale: unknown) => {
-        if (!scale) return;
-        if (typeof scale !== 'number') return;
-        scaleS.set(scale);
-    };
-    const scaleS = new Signal.State(1, {
-        [Signal.subtle.watched]: () => events.on('setscale', processSetScale),
-        [Signal.subtle.unwatched]: () => events.off('setscale', processSetScale),
-    });
-    return scaleS;
-}
-
-const viewScaleNestedSignal = new Signal.Computed(() => {
+export const viewScaleSignal = createSignalComputedNested(() => {
     const events = pixelPlanetEvents.get();
     if (!events) return new Signal.State(1);
-    return createViewScaleSignal(events);
+    return createSignalState(1, (s) => {
+        const processSetScale = (scale: unknown) => {
+            if (!scale) return;
+            if (typeof scale !== 'number') return;
+            s.set(scale);
+        };
+        events.on('setscale', processSetScale);
+        return () => events.off('setscale', processSetScale);
+    });
 });
 
-export const viewScaleSignal = new Signal.Computed(() => {
-    const nested = viewScaleNestedSignal.get();
-    return nested.get();
-});
-
-const touchHoverPixelSignal = new Signal.Computed(() => {
+const touchHoverPixelSignal = createSignalComputed(() => {
     const { clientX, clientY, timestamp } = viewPortTouchClientCoordinatesSignal.get();
     const { height, width } = windowInnerSize.get();
     const viewScale = viewScaleSignal.get();
@@ -112,7 +98,7 @@ const touchHoverPixelSignal = new Signal.Computed(() => {
     return { x, y, timestamp };
 });
 
-export const hoverPixelSignal = new Signal.Computed(() => {
+export const hoverPixelSignal = createSignalComputed(() => {
     const touchPixel = touchHoverPixelSignal.get();
     const pageHover = latestPageHoverPixelState.get();
     const view = latestRoundedViewCenter.get();
@@ -121,13 +107,13 @@ export const hoverPixelSignal = new Signal.Computed(() => {
     return { x: latest.x, y: latest.y };
 });
 
-const latestPageHoverPixelState = new Signal.Computed(() => {
+const latestPageHoverPixelState = createSignalComputed(() => {
     const p = selectPageStateHoverPixel.get();
     if (!p) return undefined;
     return { ...p, timestamp: Date.now() };
 });
 
-const latestRoundedViewCenter = new Signal.Computed(() => {
+const latestRoundedViewCenter = createSignalComputed(() => {
     const view = selectPageStateRoundedCanvasViewCenter.get();
     if (!view) return undefined;
     return { ...view, timestamp: Date.now() };
