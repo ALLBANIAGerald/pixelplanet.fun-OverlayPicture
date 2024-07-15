@@ -6,6 +6,7 @@ import { selectPageStateCanvasPalette, selectPageStateCanvasReservedColors, sele
 import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
 import { unsafeWindow } from 'vite-plugin-monkey/dist/client';
 import { createSignalState } from '../../utils/signalPrimitives/createSignal';
+import { createSignalComputedNested } from '../../utils/signalPrimitives/createSignalComputedNested';
 
 export interface Cell {
     x: number;
@@ -71,15 +72,10 @@ function createViewCenterSignal(events: EventEmitter) {
     return viewCenter;
 }
 
-const viewCenterNestedSignal = new Signal.Computed(() => {
+const viewCenterSignal = createSignalComputedNested(() => {
     const events = pixelPlanetEvents.get();
     if (!events) return new Signal.State({ x: 0, y: 0 });
     return createViewCenterSignal(events);
-});
-
-export const viewCenterSignal = new Signal.Computed(() => {
-    const nested = viewCenterNestedSignal.get();
-    return nested.get();
 });
 
 function createViewScaleSignal(events: EventEmitter) {
