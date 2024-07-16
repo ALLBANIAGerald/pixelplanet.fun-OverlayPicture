@@ -14,7 +14,9 @@
 // import ConfigDropDown from '../configDropDown/configDropDown';
 // import OverlayConfig from '../overlayConfig/overlayConfig';
 import { Show } from 'solid-js';
-import thumbnail from '../../assets/thumbnail-small.png';
+import { useSignal } from '../../store/useSignal';
+import { isOverlayEnabledSignal } from '../../store/slices/overlaySlice';
+import { OverlayThumbnailImageButton } from './overlayThumbnailImage';
 
 // const makeStyles = createMakeStyles({ useTheme });
 // const useStyles = makeStyles.makeStyles<{ isMinimized: boolean }>()((theme, props) => {
@@ -41,7 +43,7 @@ import thumbnail from '../../assets/thumbnail-small.png';
 function SmallModal() {
     return (
         <div class="tw-base tw-absolute tw-right-4 tw-top-4 tw-size-9 tw-border tw-border-solid tw-border-black tw-backdrop-blur">
-            <input type="image" class="tw-size-9" src={thumbnail} />
+            <OverlayThumbnailImageButton class="tw-size-9" />
         </div>
     );
 }
@@ -57,7 +59,7 @@ export function ConfigurationModal() {
 const BigModal = () => {
     return (
         <div class="tw-base tw-absolute tw-right-4 tw-top-4 tw-size-9 tw-border tw-border-solid tw-border-black tw-backdrop-blur">
-            <input type="image" class="tw-size-9" src={thumbnail} />
+            <OverlayThumbnailImageButton class="tw-size-9" />
         </div>
     );
 };

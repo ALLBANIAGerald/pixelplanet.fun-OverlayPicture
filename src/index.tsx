@@ -1,7 +1,6 @@
 /* @refresh reload */
 import { render } from 'solid-js/web';
 import './index.css';
-import { executeAllHooks } from './gameInjection/pageStoreHooks';
 import AppProvidersWrapper from './components/appProvidersWrapper';
 // import 'solid-devtools';
 import { unsafeWindow } from 'vite-plugin-monkey/dist/client';
@@ -14,8 +13,6 @@ if (unsafeWindow == window) {
 }
 
 function init(): void {
-    executeAllHooks();
-
     const rootNode = document.createElement('div');
     rootNode.id = 'PictureOverlay_RootNode';
     document.body.prepend(rootNode);

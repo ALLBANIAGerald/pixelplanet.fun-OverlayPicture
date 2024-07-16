@@ -1,6 +1,5 @@
 import { Store } from 'redux';
 
-import { createSelector } from '@reduxjs/toolkit';
 import { createSignalComputedNested } from './signalPrimitives/createSignalComputedNested';
 import { createSignalComputed, createSignalState } from './signalPrimitives/createSignal';
 
@@ -197,11 +196,6 @@ export const selectPageStateHoverPixel = createSignalComputed(() => {
     if (x == null || y == null) return undefined;
     return { x, y };
 });
-
-export const selectPageStateViewScale = createSelector(
-    (state: PageState) => state.canvas.view[2],
-    (viewScale) => viewScale
-);
 
 export const selectPageStateCanvasViewCenter = createSignalComputed(() => {
     const state = latestStateSignal.get();
