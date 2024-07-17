@@ -7,7 +7,7 @@ import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
 
 import { viewCenterSignal, viewScaleSignal } from './gameSlice';
 import { gameCoordsToScreen, screenToGameCoords } from '../../utils/coordConversion';
-import { createSignalComputed } from '../../utils/signalPrimitives/createSignal';
+import { createSignalComputed, createSignalState } from '../../utils/signalPrimitives/createSignal';
 
 interface OverlayImageInputState {
     url?: string;
@@ -273,3 +273,5 @@ export const overlayImagesIdsSortedDistanceToViewCenter = createSignalComputed(
         return true;
     }
 );
+
+export const showBigModal = createSignalState(true);
