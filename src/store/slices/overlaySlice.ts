@@ -54,15 +54,6 @@ interface OverlayState {
     browserWindow: BrowserWindowState;
 }
 
-const initialState: OverlayState = {
-    savedConfigs: [],
-    overlayEnabled: true,
-    overlayImage: { inputImage: {} },
-    placementConfiguration: { yOffset: 0, xOffset: 0, transparency: 92, isFollowMouseActive: false, autoSelectColor: false },
-    modifications: { imageBrightness: 0, shouldConvertColors: false, smolPixels: false },
-    browserWindow: { innerWidth: 100, innerHeight: 100 },
-};
-
 export interface OverlayImage {
     id: number;
     enabled: boolean;
@@ -176,7 +167,7 @@ export const isShowSmallPixelsActiveSignal = new Signal.State(true);
 
 export type StoredSignal<T> = [() => T, (newValue: T) => void];
 
-function persistedSignal<T = unknown>(initialValue: T, key: string, mapOld?: (old: RootState['overlay']) => T | Promise<T>): StoredSignal<T> {
+function persistedSignal<T = unknown>(initialValue: T, key: string, mapOld?: (old: OverlayState) => T | Promise<T>): StoredSignal<T> {
     const signal = new Signal.State(initialValue);
     let initialized = false;
     signalsStorage
