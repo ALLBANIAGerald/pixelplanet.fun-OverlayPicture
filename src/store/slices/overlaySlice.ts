@@ -252,3 +252,24 @@ export const topLeftScreenToGameCoordinates = new Signal.Computed(() => {
     const viewScale = viewScaleSignal.get();
     return screenToGameCoords({ clientX: 0, clientY: 0 }, windowSize, viewCenter, viewScale);
 });
+
+export const overlayImagesIdsSortedDistanceToViewCenter = createSignalComputed(
+    () => {
+        const images = [...overlayImagesIdsOnCurrentCanvas.get()]
+            .map((x) => overlayImagesById.get()[x])
+            .filter((x) => !!x)
+            .filter((x) => x.enabled);
+        return images
+            .map((image) => ({ distanceSq: (image.location.x - viewCenterSignal.get().x) ** 2 + (image.location.y - viewCenterSignal.get().y) ** 2, imageId: image.id }))
+            .toSorted((a, b) => a.distanceSq - b.distanceSq)
+            .map((x) => x.imageId);
+    },
+    undefined,
+    (a, b) => {
+        if (a.length !== b.length) return false;
+        for (let index = 0; index < a.length; index++) {
+            if (a[index] !== b[index]) return false;
+        }
+        return true;
+    }
+);
