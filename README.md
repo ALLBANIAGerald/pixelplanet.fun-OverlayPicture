@@ -1,3 +1,5 @@
+<img align="left" src="src\assets\thumbnail-small.png" alt="drawing" width="32"/>
+
 # Overlay Picture for pixelplanet.fun
 
 <a href="https://forthebadge.com"><img src="https://forthebadge.com/images/badges/made-with-typescript.svg" height="35"></a>
