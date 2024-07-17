@@ -1,7 +1,7 @@
 import { useSignal } from '../../store/useSignal';
 import { selectPageStateCanvasId, selectPageStateCanvasPalette } from '../../utils/getPageReduxStore';
 import { viewCenterSignal, viewScaleSignal } from '../../store/slices/gameSlice';
-import { isShowSmallPixelsActiveSignal, OverlayImage, overlayImagesById, overlayTransparencySignal, visibleOnScreenOverlayImages } from '../../store/slices/overlaySlice';
+import { isShowSmallPixelsActiveSignal, OverlayImage, overlayImagesById, overlayTransparencySignal, overlayImagesIdsVisibleOnScreen } from '../../store/slices/overlaySlice';
 import { Accessor, createMemo, createRenderEffect, createSignal, For, Match, onCleanup, Show, Switch } from 'solid-js';
 import { gameCoordsToScreen } from '../../utils/coordConversion';
 import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
@@ -305,6 +305,6 @@ function OverlayImageRender(props: { imageId: number }) {
 }
 
 export function OverlayImages() {
-    const images = useSignal(visibleOnScreenOverlayImages);
-    return <For each={images()}>{(image) => <OverlayImageRender imageId={image.id} />}</For>;
+    const imageIds = useSignal(overlayImagesIdsVisibleOnScreen);
+    return <For each={[...imageIds()]}>{(imageId) => <OverlayImageRender imageId={imageId} />}</For>;
 }

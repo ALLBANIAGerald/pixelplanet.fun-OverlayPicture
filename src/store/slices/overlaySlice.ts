@@ -1,15 +1,13 @@
-import colorConverter from '../../colorConverter';
 import logger from '../../handlers/logger';
 import localforage from 'localforage';
 import { Signal } from 'signal-polyfill';
 import { getStoredValue } from '../../store/getStoredData';
-import { selectPageStateCanvasId, selectPageStateCanvasPalette, selectPageStateCanvasReservedColors } from '../../utils/getPageReduxStore';
+import { selectPageStateCanvasId } from '../../utils/getPageReduxStore';
 import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
 
-import { RootState } from '../store';
-
-import { hoverPixelSignal, viewCenterSignal, viewScaleSignal } from './gameSlice';
+import { viewCenterSignal, viewScaleSignal } from './gameSlice';
 import { gameCoordsToScreen, screenToGameCoords } from '../../utils/coordConversion';
+import { createSignalComputed } from '../../utils/signalPrimitives/createSignal';
 
 interface OverlayImageInputState {
     url?: string;
@@ -196,35 +194,58 @@ function persistedSignal<T = unknown>(initialValue: T, key: string, mapOld?: (ol
     ];
 }
 
-export const overlayImagesById = new Signal.Computed(() => {
+export const overlayImagesById = createSignalComputed(() => {
     const images = overlayImagesSignal[0]();
-    return images.reduce<Record<string, OverlayImage>>((acc, curr) => {
+    return images.reduce<Record<number, OverlayImage>>((acc, curr) => {
         acc[curr.id] = curr;
         return acc;
     }, {});
 });
-// TODO create new signal with overlayImagesLocations
-// Should contain {canvasId: string, id: number, x:number, y: number, width: number, height: number}[]
-// And have custom equality comparison. go through the array and check if anything changed
-export const enabledOverlayImages = new Signal.Computed(() => overlayImagesSignal[0]().filter((x) => x.enabled));
-export const imagesOnCurrentCanvas = new Signal.Computed(() => {
-    const currentCanvasId = selectPageStateCanvasId.get();
-    const images = overlayImagesSignal[0]();
-    const imagesOnCanvas = images.filter((x) => x.canvasId === currentCanvasId);
-    return imagesOnCanvas;
-});
-export const visibleOnScreenOverlayImages = new Signal.Computed(() => {
-    const windowSize = windowInnerSize.get();
-    const viewCenter = viewCenterSignal.get();
-    const viewScale = viewScaleSignal.get();
-    return imagesOnCurrentCanvas.get().filter((x) => {
-        const screenCoordsTopLeft = gameCoordsToScreen({ x: x.location.x, y: x.location.y }, windowSize, viewCenter, viewScale);
-        const screenCoordsBottomRight = gameCoordsToScreen({ x: x.location.x + x.size.width, y: x.location.y + x.size.height }, windowSize, viewCenter, viewScale);
-        if (screenCoordsBottomRight.clientX < 0 || screenCoordsBottomRight.clientY < 0) return false;
-        if (screenCoordsTopLeft.clientX > windowSize.width || screenCoordsTopLeft.clientY > windowSize.height) return false;
-        return true;
-    });
-});
+
+export const overlayImagesIds = createSignalComputed(
+    () => {
+        const imagesIds = overlayImagesSignal[0]().map((x) => x.id);
+        return new Set(imagesIds);
+    },
+    undefined,
+    (a, b) => a.symmetricDifference(b).size === 0
+);
+
+export const overlayImagesIdsOnCurrentCanvas = createSignalComputed(
+    () => {
+        const currentCanvasId = selectPageStateCanvasId.get();
+        const images = overlayImagesSignal[0]();
+        const imagesOnCanvas = images.filter((x) => x.canvasId === currentCanvasId);
+        return new Set(imagesOnCanvas.map((x) => x.id));
+    },
+    undefined,
+    (a, b) => a.symmetricDifference(b).size === 0
+);
+
+export const overlayImagesIdsVisibleOnScreen = createSignalComputed(
+    () => {
+        const windowSize = windowInnerSize.get();
+        const viewCenter = viewCenterSignal.get();
+        const viewScale = viewScaleSignal.get();
+        const imagesById = overlayImagesById.get();
+        const idsSet = overlayImagesIdsOnCurrentCanvas.get();
+        return new Set(
+            [...idsSet].filter((id) => {
+                const x = imagesById[id];
+                if (!x) return false;
+                if (!x.enabled) return false;
+                const screenCoordsTopLeft = gameCoordsToScreen({ x: x.location.x, y: x.location.y }, windowSize, viewCenter, viewScale);
+                const screenCoordsBottomRight = gameCoordsToScreen({ x: x.location.x + x.size.width, y: x.location.y + x.size.height }, windowSize, viewCenter, viewScale);
+                if (screenCoordsBottomRight.clientX < 0 || screenCoordsBottomRight.clientY < 0) return false;
+                if (screenCoordsTopLeft.clientX > windowSize.width || screenCoordsTopLeft.clientY > windowSize.height) return false;
+                return true;
+            })
+        );
+    },
+    undefined,
+    (a, b) => a.symmetricDifference(b).size === 0
+);
+
 export const topLeftScreenToGameCoordinates = new Signal.Computed(() => {
     const windowSize = windowInnerSize.get();
     const viewCenter = viewCenterSignal.get();
