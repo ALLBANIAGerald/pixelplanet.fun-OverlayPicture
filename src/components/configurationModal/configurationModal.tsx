@@ -69,7 +69,7 @@ const BigModal = () => {
     return (
         <>
             <div>
-                <div class="tw-modal-box tw-absolute tw-right-2 tw-top-2 tw-box-border tw-flex !tw-h-[calc-size(auto)] tw-h-auto tw-max-h-[calc(100%-theme(spacing.2)*2-16px-36px)] tw-min-h-20 tw-w-fit tw-min-w-12 tw-max-w-[calc(100%-theme(spacing.2)*2-98px-36px)] tw-scale-100 tw-flex-col tw-justify-items-center tw-overflow-auto tw-overscroll-contain tw-p-2 tw-transition-[color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter,-webkit-backdrop-filter,height]">
+                <div class="starting:tw-h-4 starting:tw-w-4 starting:tw-bg-opacity-70 tw-modal-box tw-absolute tw-right-2 tw-top-2 tw-box-border tw-flex !tw-h-[calc-size(auto)] tw-h-auto tw-max-h-[calc(100%-theme(spacing.2)*2-16px-36px)] tw-min-h-20 !tw-w-[calc-size(fit-content)] tw-w-fit tw-min-w-12 tw-max-w-[calc(100%-theme(spacing.2)*2-98px-36px)] tw-scale-100 tw-flex-col tw-justify-items-center tw-overflow-auto tw-overscroll-contain tw-p-2 tw-transition-[color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter,-webkit-backdrop-filter,height]">
                     <div class="tw-grid [grid-template-columns:3rem_1fr_3rem]">
                         <input
                             type="checkbox"

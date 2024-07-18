@@ -18,6 +18,10 @@ export default {
         },
     },
     plugins: [
+        /** @type {import('tailwindcss/types/config').PluginCreator} */
+        ({ addVariant }) => {
+            addVariant('starting', '@starting-style');
+        },
         tailwindContainerQueries,
         daisyui,
         scopedPreflightStyles({
