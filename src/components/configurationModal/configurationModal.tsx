@@ -70,7 +70,7 @@ const BigModal = () => {
         <>
             <div>
                 <div class="tw-modal-box tw-absolute tw-right-2 tw-top-2 tw-box-border tw-flex !tw-h-[calc-size(auto)] tw-h-auto tw-max-h-[calc(100%-theme(spacing.2)*2-16px-36px)] tw-min-h-20 tw-w-fit tw-min-w-12 tw-max-w-[calc(100%-theme(spacing.2)*2-98px-36px)] tw-scale-100 tw-flex-col tw-justify-items-center tw-overflow-auto tw-overscroll-contain tw-p-2 tw-transition-[color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter,-webkit-backdrop-filter,height]">
-                    <div class="tw-flex tw-flex-row">
+                    <div class="tw-grid [grid-template-columns:3rem_1fr_3rem]">
                         <input
                             type="checkbox"
                             class="tw-toggle tw-toggle-success"
@@ -79,14 +79,15 @@ const BigModal = () => {
                             }}
                             checked={isOverlayEnabled()}
                         />
-                        <div class="tw-flex tw-flex-1 tw-items-center tw-justify-center">
-                            <h3 class="tw-m-0 tw-text-center tw-text-lg tw-font-bold">Picture Overlay</h3>
+                        <div class="tw-flex tw-flex-1 tw-items-center tw-justify-center tw-@container">
+                            <h3 class="tw-m-0 tw-hidden tw-text-center tw-text-lg tw-font-bold @[9rem]:tw-block">Picture Overlay</h3>
+                            <h3 class="tw-m-0 tw-hidden tw-text-center tw-text-lg tw-font-bold @[5rem]:tw-block @[9rem]:tw-hidden">Overlay</h3>
                         </div>
                         <OverlayThumbnailImageButton
                             onclick={() => {
                                 showBigModal.set(!showBigModal.get());
                             }}
-                            class="tw-size-9"
+                            class="tw-size-9 tw-justify-self-end"
                         />
                     </div>
                     <div class="tw-flex tw-flex-col">
@@ -121,57 +122,49 @@ const BigModal = () => {
                     </div>
                     <div class="tw-divider" />
                     <div class="tw-flex tw-flex-col">
-                        <div class="tw-flex tw-flex-col tw-gap-1 sm:tw-flex-row">
-                            <div class="tw-@container tw-flex tw-flex-row tw-flex-wrap tw-gap-1">
-                                <div class="tw-avatar">
-                                    <div class="tw-h-24 tw-w-24 tw-rounded-xl">
+                        <div class="tw-flex tw-flex-col tw-gap-1 tw-@container">
+                            <div class="tw-grid tw-gap-1 [grid-template-areas:'image_buttons''slider_slider'] [grid-template-columns:6rem_1fr] @[16rem]:[grid-template-areas:'image_buttons''image_slider'] @[16rem]:[grid-template-columns:8rem_1fr]">
+                                <div class="tw-avatar tw-self-center [grid-area:image]">
+                                    <div class="tw-h-24 tw-w-24 tw-rounded-xl @[16rem]:tw-h-32 @[16rem]:tw-w-32">
                                         <img src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.jpg" />
                                     </div>
                                 </div>
-                                <div class="@[15rem]:tw-flex-nowrap tw-flex tw-flex-row tw-flex-wrap">
+                                <div class="tw-flex tw-flex-row tw-flex-wrap tw-self-center [grid-area:buttons]">
                                     <button class="tw-btn tw-btn-square tw-btn-ghost">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="tw-h-6 tw-w-6" viewBox="0 -960 960 960" fill="currentColor">
                                             <path d="M720-330q0 104-73 177T470-80q-104 0-177-73t-73-177v-370q0-75 52.5-127.5T400-880q75 0 127.5 52.5T580-700v350q0 46-32 78t-78 32q-46 0-78-32t-32-78v-370h80v370q0 13 8.5 21.5T470-320q13 0 21.5-8.5T500-350v-350q-1-42-29.5-71T400-800q-42 0-71 29t-29 71v370q-1 71 49 120.5T470-160q70 0 119-49.5T640-330v-390h80v390Z" />
                                         </svg>
                                     </button>
-                                    <button class="tw-btn tw-btn-square tw-btn-ghost">
+                                    <button class="tw-btn tw-btn-square tw-btn-ghost [grid-area:buttons]">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="tw-h-6 tw-w-6" viewBox="0 -960 960 960" fill="currentColor">
                                             <path d="M480-480q33 0 56.5-23.5T560-560q0-33-23.5-56.5T480-640q-33 0-56.5 23.5T400-560q0 33 23.5 56.5T480-480Zm0 294q122-112 181-203.5T720-552q0-109-69.5-178.5T480-800q-101 0-170.5 69.5T240-552q0 71 59 162.5T480-186Zm0 106Q319-217 239.5-334.5T160-552q0-150 96.5-239T480-880q127 0 223.5 89T800-552q0 100-79.5 217.5T480-80Zm0-480Z" />
                                         </svg>
                                     </button>
-                                    <button class="tw-btn tw-btn-square tw-btn-ghost">
+                                    <button class="tw-btn tw-btn-square tw-btn-ghost [grid-area:buttons]">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="tw-h-6 tw-w-6" viewBox="0 -960 960 960" fill="currentColor">
                                             <path d="M480-80 310-250l57-57 73 73v-206H235l73 72-58 58L80-480l169-169 57 57-72 72h206v-206l-73 73-57-57 170-170 170 170-57 57-73-73v206h205l-73-72 58-58 170 170-170 170-57-57 73-73H520v205l72-73 58 58L480-80Z" />
                                         </svg>
                                     </button>
                                 </div>
-                                <div class="tw-flex tw-flex-col sm:tw-flex-row">
-                                    <label class="tw-form-control tw-w-full tw-max-w-xs">
-                                        <div class="tw-label">
-                                            <span class="tw-label-text">X</span>
-                                        </div>
-                                        <input type="number" placeholder="Type here" class="w-full tw-input tw-input-bordered tw-max-w-xs" />
-                                    </label>
-                                    <label class="tw-form-control tw-w-full tw-max-w-xs">
-                                        <div class="tw-label">
-                                            <span class="tw-label-text">Y</span>
-                                        </div>
-                                        <input type="number" placeholder="Type here" class="w-full tw-input tw-input-bordered tw-max-w-xs" />
+                                <label class="tw-form-control tw-w-full tw-max-w-xs [grid-area:slider]">
+                                    <div class="tw-label">
+                                        <span class="tw-label-text">Coordinates</span>
+                                    </div>
+                                    <input type="text" placeholder="Type here" class="w-full tw-input tw-input-bordered tw-max-w-xs" />
+                                </label>
+                            </div>
+                            <div class="tw-flex tw-flex-col">
+                                <div class="tw-form-control">
+                                    <label class="tw-label tw-cursor-pointer">
+                                        <span class="tw-label-text">Convert colors</span>
+                                        <input type="checkbox" class="tw-toggle tw-toggle-info" />
                                     </label>
                                 </div>
-                                <div class="tw-flex tw-flex-col">
-                                    <div class="tw-form-control">
-                                        <label class="tw-label tw-cursor-pointer">
-                                            <span class="tw-label-text">Convert colors</span>
-                                            <input type="checkbox" class="tw-toggle tw-toggle-info" />
-                                        </label>
-                                    </div>
-                                    <div class="tw-form-control">
-                                        <label class="tw-label tw-cursor-pointer tw-gap-1">
-                                            <span class="tw-label-text">Image brightness</span>
-                                            <input type="range" min="0" max="100" class="tw-range" />
-                                        </label>
-                                    </div>
+                                <div class="tw-form-control">
+                                    <label class="tw-label tw-cursor-pointer tw-gap-1">
+                                        <span class="tw-label-text">Image brightness</span>
+                                        <input type="range" min="0" max="100" class="tw-range" />
+                                    </label>
                                 </div>
                             </div>
                         </div>
@@ -184,9 +177,6 @@ const BigModal = () => {
                     </div>
                 </div>
             </div>
-            {/* <div class="tw-base tw-absolute tw-right-4 tw-top-4 tw-size-9 tw-border tw-border-solid tw-border-black tw-backdrop-blur">
-                <OverlayThumbnailImageButton class="tw-size-9" />
-            </div> */}
         </>
     );
 };
