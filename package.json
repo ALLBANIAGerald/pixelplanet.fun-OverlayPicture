@@ -23,6 +23,7 @@
     "license": "ISC",
     "devDependencies": {
         "@eslint/js": "^9.6.0",
+        "@tailwindcss/container-queries": "^0.1.1",
         "@types/eslint__js": "^8.42.3",
         "autoprefixer": "^10.4.13",
         "daisyui": "^4.12.10",
@@ -42,7 +43,6 @@
         "vite-plugin-solid": "^2.10.2"
     },
     "dependencies": {
-        "@tailwindcss/container-queries": "^0.1.1",
         "@tanstack/solid-query": "^5.51.2",
         "comlink": "^4.4.0",
         "events": "^3.3.0",
