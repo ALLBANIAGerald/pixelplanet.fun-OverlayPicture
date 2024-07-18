@@ -111,7 +111,7 @@ const BigModal = () => {
                                     min="0"
                                     max="100"
                                     value={transparency()}
-                                    onchange={(e) => {
+                                    oninput={(e) => {
                                         overlayTransparencySignal.set(e.target.valueAsNumber);
                                     }}
                                     class="tw-range"
