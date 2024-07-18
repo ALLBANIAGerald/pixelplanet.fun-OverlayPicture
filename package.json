@@ -42,6 +42,7 @@
         "vite-plugin-solid": "^2.10.2"
     },
     "dependencies": {
+        "@tailwindcss/container-queries": "^0.1.1",
         "@tanstack/solid-query": "^5.51.2",
         "comlink": "^4.4.0",
         "events": "^3.3.0",
