@@ -153,6 +153,29 @@ const BigModal = () => {
                                     </div>
                                     <input type="text" placeholder="Type here" class="w-full tw-input tw-input-bordered tw-max-w-xs" />
                                 </label>
+                                <div class="tw-dropdown">
+                                    <div tabindex="0" role="button" class="tw-tw-btn tw-m-1">
+                                        <img class="tw-h-8 tw-w-8" alt="preview" src="/preview0.png"></img>
+                                    </div>
+                                    <ul tabindex="0" class="tw-menu tw-dropdown-content tw-z-[1] tw-w-fit tw-rounded-box tw-bg-base-200 tw-p-2 tw-shadow">
+                                        <li class="tw-flex tw-flex-row tw-flex-nowrap tw-items-center">
+                                            <img class="tw-h-8 tw-w-8" alt="preview" src="/preview0.png"></img>
+                                            <a>Earth</a>
+                                        </li>
+                                        <li class="tw-flex tw-flex-row tw-flex-nowrap tw-items-center">
+                                            <img class="tw-h-8 tw-w-8" alt="preview" src="/preview11.png"></img>
+                                            <a>Minimap</a>
+                                        </li>
+                                        <li class="tw-flex tw-flex-row tw-flex-nowrap tw-items-center">
+                                            <img class="tw-h-8 tw-w-8" alt="preview" src="/preview1.png"></img>
+                                            <a>Moon</a>
+                                        </li>
+                                        <li class="tw-flex tw-flex-row tw-flex-nowrap tw-items-center">
+                                            <img class="tw-h-8 tw-w-8" alt="preview" src="/preview3.png"></img>
+                                            <a>Coronavirus</a>
+                                        </li>
+                                    </ul>
+                                </div>
                             </div>
                             <div class="tw-flex tw-flex-col">
                                 <div class="tw-form-control">
