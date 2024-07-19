@@ -131,7 +131,7 @@ const BigModal = () => {
                                 <div class="tw-avatar tw-self-center [grid-area:image]">
                                     <div class="tw-relative tw-h-24 tw-w-24 tw-rounded-xl @[16rem]:tw-h-32 @[16rem]:tw-w-32">
                                         <input type="checkbox" checked={true} class="tw-checkbox tw-pointer-events-none tw-absolute tw-h-4 tw-w-4" />
-                                        <img src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.jpg" />
+                                        <img src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp" />
                                     </div>
                                 </div>
                                 <div class="tw-flex tw-flex-row tw-flex-wrap tw-self-center [grid-area:buttons]">
