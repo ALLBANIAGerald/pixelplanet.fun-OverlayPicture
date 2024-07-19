@@ -15,7 +15,7 @@
 // import OverlayConfig from '../overlayConfig/overlayConfig';
 import { createSignal, Match, Show, Switch } from 'solid-js';
 import { useSignal } from '../../store/useSignal';
-import { isAutoSelectColorActiveSignal, isOverlayEnabledSignal, overlayTransparencySignal, showBigModal } from '../../store/slices/overlaySlice';
+import { dragModeEnabled, isAutoSelectColorActiveSignal, isOverlayEnabledSignal, overlayTransparencySignal, showBigModal } from '../../store/slices/overlaySlice';
 import { OverlayThumbnailImageButton } from './overlayThumbnailImage';
 
 // const makeStyles = createMakeStyles({ useTheme });
@@ -68,7 +68,7 @@ const BigModal = () => {
     const autoSelectColor = useSignal(isAutoSelectColorActiveSignal);
     const [open, setOpen] = createSignal(false);
     const [editMode, setEditMode] = createSignal<'auto' | 'select on map' | 'manual'>('auto');
-
+    const dragMode = useSignal(dragModeEnabled);
     return (
         <>
             <div>
@@ -149,6 +149,20 @@ const BigModal = () => {
                                 <Match when={editMode() === 'select on map'}>Select map</Match>
                             </Switch>
                         </button>
+                        <button
+                            onclick={() => {
+                                dragModeEnabled.set(!dragModeEnabled.get());
+                            }}
+                            class="tw-btn tw-btn-square [grid-area:buttons]"
+                            classList={{
+                                'tw-btn-ghost': !dragMode(),
+                                'tw-btn-primary': dragMode(),
+                            }}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="tw-h-6 tw-w-6" viewBox="0 -960 960 960" fill="currentColor">
+                                <path d="M480-80 310-250l57-57 73 73v-206H235l73 72-58 58L80-480l169-169 57 57-72 72h206v-206l-73 73-57-57 170-170 170 170-57 57-73-73v206h205l-73-72 58-58 170 170-170 170-57-57 73-73H520v205l72-73 58 58L480-80Z" />
+                            </svg>
+                        </button>
                     </div>
                     <div class="tw-divider" />
                     <Show when={editMode() === 'select on map'}>
@@ -173,11 +187,6 @@ const BigModal = () => {
                                         <button class="tw-btn tw-btn-square tw-btn-ghost [grid-area:buttons]">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="tw-h-6 tw-w-6" viewBox="0 -960 960 960" fill="currentColor">
                                                 <path d="M480-480q33 0 56.5-23.5T560-560q0-33-23.5-56.5T480-640q-33 0-56.5 23.5T400-560q0 33 23.5 56.5T480-480Zm0 294q122-112 181-203.5T720-552q0-109-69.5-178.5T480-800q-101 0-170.5 69.5T240-552q0 71 59 162.5T480-186Zm0 106Q319-217 239.5-334.5T160-552q0-150 96.5-239T480-880q127 0 223.5 89T800-552q0 100-79.5 217.5T480-80Zm0-480Z" />
-                                            </svg>
-                                        </button>
-                                        <button class="tw-btn tw-btn-square tw-btn-ghost [grid-area:buttons]">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="tw-h-6 tw-w-6" viewBox="0 -960 960 960" fill="currentColor">
-                                                <path d="M480-80 310-250l57-57 73 73v-206H235l73 72-58 58L80-480l169-169 57 57-72 72h206v-206l-73 73-57-57 170-170 170 170-57 57-73-73v206h205l-73-72 58-58 170 170-170 170-57-57 73-73H520v205l72-73 58 58L480-80Z" />
                                             </svg>
                                         </button>
                                         <button class="tw-btn tw-btn-square tw-btn-ghost [grid-area:buttons]">

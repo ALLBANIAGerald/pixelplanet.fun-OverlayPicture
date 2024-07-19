@@ -8,6 +8,7 @@ import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
 import { viewCenterSignal, viewScaleSignal } from './gameSlice';
 import { gameCoordsToScreen, screenToGameCoords } from '../../utils/coordConversion';
 import { createSignalComputed, createSignalState } from '../../utils/signalPrimitives/createSignal';
+import { produce } from 'immer';
 
 interface OverlayImageInputState {
     url?: string;
@@ -275,3 +276,17 @@ export const overlayImagesIdsSortedDistanceToViewCenter = createSignalComputed(
 );
 
 export const showBigModal = createSignalState(true);
+
+export const dragModeEnabled = createSignalState(false);
+
+export function updateOverlayImageLocation(id: number, x: number, y: number) {
+    const initialImages = overlayImagesSignal[0]();
+    const modifiedList = produce(initialImages, (images) => {
+        const targetImage = images.find((x) => x.id === id);
+        if (!targetImage) return;
+        if (targetImage.location.x === x && targetImage.location.y === y) return;
+        targetImage.location.x = x;
+        targetImage.location.y = y;
+    });
+    if (modifiedList !== initialImages) overlayImagesSignal[1](modifiedList);
+}

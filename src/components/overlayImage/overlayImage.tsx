@@ -1,13 +1,22 @@
 import { useSignal } from '../../store/useSignal';
 import { selectPageStateCanvasId, selectPageStateCanvasPalette } from '../../utils/getPageReduxStore';
 import { viewCenterSignal, viewScaleSignal } from '../../store/slices/gameSlice';
-import { isShowSmallPixelsActiveSignal, OverlayImage, overlayImagesById, overlayTransparencySignal, overlayImagesIdsVisibleOnScreen } from '../../store/slices/overlaySlice';
+import {
+    isShowSmallPixelsActiveSignal,
+    OverlayImage,
+    overlayImagesById,
+    overlayTransparencySignal,
+    overlayImagesIdsVisibleOnScreen,
+    updateOverlayImageLocation,
+    dragModeEnabled,
+} from '../../store/slices/overlaySlice';
 import { Accessor, createMemo, createRenderEffect, createSignal, For, Match, onCleanup, Show, Switch } from 'solid-js';
-import { gameCoordsToScreen } from '../../utils/coordConversion';
+import { gameCoordsToScreen, screenToGameCoords } from '../../utils/coordConversion';
 import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
 import { GM_xmlhttpRequest } from 'vite-plugin-monkey/dist/client';
 import { pictureConverterApi } from '../../pictureConversionApi';
 import { createQuery } from '@tanstack/solid-query';
+import { createDraggable, DragDropProvider, DragDropSensors, transformStyle } from '@thisbeyond/solid-dnd';
 
 async function loadUrlToImage(url: string) {
     return new Promise<HTMLImageElement | Error>((resolve) => {
@@ -215,10 +224,7 @@ const OverlayImageCanvas = (props: { image: OverlayImage; imageData: ImageData }
 
 function OverlayImageCanvasFromImageData(props: { image: OverlayImage; imageData: ImageData; smallPixels: boolean }) {
     const [canvasRef, setCanvasRef] = createSignal<HTMLCanvasElement>();
-    const windowSize = useSignal(windowInnerSize);
-    const viewCenterGameCoords = useSignal(viewCenterSignal);
     const viewScale = useSignal(viewScaleSignal);
-    const screenOffset = createMemo(() => gameCoordsToScreen(props.image.location, windowSize(), viewCenterGameCoords(), viewScale()));
 
     const transparency = useSignal(overlayTransparencySignal);
     const canvasScaleModifier = createMemo(() => (props.smallPixels ? 1 / 3 : 1));
@@ -237,13 +243,11 @@ function OverlayImageCanvasFromImageData(props: { image: OverlayImage; imageData
     return (
         <canvas
             ref={setCanvasRef}
-            class="tw-base tw-pointer-events-none tw-absolute tw-left-0 tw-top-0 tw-origin-top-left"
+            class="tw-origin-top-left"
             style={{
+                transform: `scale(${(viewScale() * canvasScaleModifier()).toString()})`,
                 'image-rendering': 'pixelated',
                 opacity: transparency() / 100,
-                transform: `scale(${(viewScale() * canvasScaleModifier()).toString()})`,
-                left: `${screenOffset().clientX.toString()}px`,
-                top: `${screenOffset().clientY.toString()}px`,
             }}
         />
     );
@@ -254,16 +258,16 @@ const OverlayImageImg = (props: { image: OverlayImage; imageUrl: string }) => {
     const topLeftGameCoords = useSignal(viewCenterSignal);
     const viewScale = useSignal(viewScaleSignal);
     const screenOffset = createMemo(() => gameCoordsToScreen(props.image.location, windowSize(), topLeftGameCoords(), viewScale()));
-    const opacity1to100 = useSignal(overlayTransparencySignal);
+    const transparency = useSignal(overlayTransparencySignal);
 
     return (
         <img
             alt=""
-            class="tw-base tw-pointer-events-none tw-absolute tw-left-0 tw-top-0 tw-origin-top-left"
+            class="tw-origin-top-left"
             src={props.imageUrl}
             style={{
                 'image-rendering': 'pixelated',
-                opacity: opacity1to100() / 100,
+                opacity: transparency() / 100,
                 transform: `scale(${viewScale().toString()})`,
                 left: `${screenOffset().clientX.toString()}px`,
                 top: `${screenOffset().clientY.toString()}px`,
@@ -283,28 +287,90 @@ function useOverlayImageFileUrl(overlayImageId: Accessor<number>) {
     return fileUrl;
 }
 
+function OverlayImageWithControls(props: { image: OverlayImage }) {
+    const fileUrl = useOverlayImageFileUrl(() => props.image.id);
+    const imageData = useOverlayImageImageData(() => props.image.id);
+
+    const draggable = createDraggable(props.image.id);
+
+    const windowSize = useSignal(windowInnerSize);
+    const viewCenterGameCoords = useSignal(viewCenterSignal);
+    const viewScale = useSignal(viewScaleSignal);
+    const screenOffset = createMemo(() => gameCoordsToScreen(props.image.location, windowSize(), viewCenterGameCoords(), viewScale()));
+    const dragMode = useSignal(dragModeEnabled);
+
+    return (
+        <div
+            ref={draggable.ref}
+            class="tw-relative tw-left-0 tw-top-0 tw-origin-top-left"
+            classList={{
+                'tw-pointer-events-none': !dragMode(),
+            }}
+            style={{
+                ...transformStyle(draggable.transform),
+                left: `${screenOffset().clientX.toString()}px`,
+                top: `${screenOffset().clientY.toString()}px`,
+            }}
+            {...draggable.dragActivators}
+        >
+            <div class="tw-pointer-events-none">
+                <Switch fallback={<Show when={fileUrl()}>{(fileUrl) => <OverlayImageImg image={props.image} imageUrl={fileUrl()} />}</Show>}>
+                    <Match when={imageData()}>{(imageData) => <OverlayImageCanvas image={props.image} imageData={imageData()} />}</Match>
+                </Switch>
+            </div>
+            <Show when={dragMode()}>
+                <button class="tw-btn tw-btn-primary tw-absolute -tw-left-6 -tw-top-6 tw-h-12 tw-w-12 tw-p-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="tw-h-6 tw-w-6" viewBox="0 -960 960 960" fill="currentColor">
+                        <path d="M480-80 310-250l57-57 73 73v-206H235l73 72-58 58L80-480l169-169 57 57-72 72h206v-206l-73 73-57-57 170-170 170 170-57 57-73-73v206h205l-73-72 58-58 170 170-170 170-57-57 73-73H520v205l72-73 58 58L480-80Z" />
+                    </svg>
+                </button>
+            </Show>
+        </div>
+    );
+}
+
 function OverlayImageRender(props: { imageId: number }) {
-    const fileUrl = useOverlayImageFileUrl(() => props.imageId);
-    const imageData = useOverlayImageImageData(() => props.imageId);
     const imagesById = useSignal(overlayImagesById);
     const image = createMemo(() => imagesById()[props.imageId]);
 
-    return (
-        <>
-            <Show when={image()}>
-                {(image) => (
-                    <>
-                        <Switch fallback={<Show when={fileUrl()}>{(fileUrl) => <OverlayImageImg image={image()} imageUrl={fileUrl()} />}</Show>}>
-                            <Match when={imageData()}>{(imageData) => <OverlayImageCanvas image={image()} imageData={imageData()} />}</Match>
-                        </Switch>
-                    </>
-                )}
-            </Show>
-        </>
-    );
+    return <Show when={image()}>{(image) => <OverlayImageWithControls image={image()} />}</Show>;
+}
+
+function useMoveImageTo() {
+    const windowSize = useSignal(windowInnerSize);
+    const viewCenter = useSignal(viewCenterSignal);
+    const viewScale = useSignal(viewScaleSignal);
+
+    return (imageId: number, screenX: number, screenY: number) => {
+        const gameCoords = screenToGameCoords({ clientX: screenX, clientY: screenY }, windowSize(), viewCenter(), viewScale());
+        updateOverlayImageLocation(imageId, Math.round(gameCoords.x), Math.round(gameCoords.y));
+    };
 }
 
 export function OverlayImages() {
     const imageIds = useSignal(overlayImagesIdsVisibleOnScreen);
-    return <For each={[...imageIds()]}>{(imageId) => <OverlayImageRender imageId={imageId} />}</For>;
+    const moveImageTo = useMoveImageTo();
+    const movedToById = new Map<number, { screenX: number; screenY: number }>();
+    const dragMode = useSignal(dragModeEnabled);
+    return (
+        <div id="overlay-images-wrapper" class="tw-base tw-h-0 tw-w-0">
+            <DragDropProvider
+                onDragMove={(e) => {
+                    movedToById.set(typeof e.draggable.id === 'string' ? parseInt(e.draggable.id) : e.draggable.id, { screenX: e.draggable.transformed.x, screenY: e.draggable.transformed.y });
+                }}
+                onDragEnd={(e) => {
+                    const id = typeof e.draggable.id === 'string' ? parseInt(e.draggable.id) : e.draggable.id;
+                    const movedTo = movedToById.get(id);
+                    if (!movedTo) return;
+                    moveImageTo(id, movedTo.screenX, movedTo.screenY);
+                    movedToById.delete(id);
+                }}
+            >
+                <Show when={dragMode()}>
+                    <DragDropSensors />
+                </Show>
+                <For each={[...imageIds()]}>{(imageId) => <OverlayImageRender imageId={imageId} />}</For>;
+            </DragDropProvider>
+        </div>
+    );
 }
