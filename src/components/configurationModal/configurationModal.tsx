@@ -13,10 +13,11 @@
 // import { useAppDispatch } from '../../store/hooks';
 // import ConfigDropDown from '../configDropDown/configDropDown';
 // import OverlayConfig from '../overlayConfig/overlayConfig';
-import { Show } from 'solid-js';
+import { createSignal, Show } from 'solid-js';
 import { useSignal } from '../../store/useSignal';
 import { isAutoSelectColorActiveSignal, isOverlayEnabledSignal, overlayTransparencySignal, showBigModal } from '../../store/slices/overlaySlice';
 import { OverlayThumbnailImageButton } from './overlayThumbnailImage';
+import Dismiss from 'solid-dismiss';
 
 // const makeStyles = createMakeStyles({ useTheme });
 // const useStyles = makeStyles.makeStyles<{ isMinimized: boolean }>()((theme, props) => {
@@ -66,10 +67,13 @@ const BigModal = () => {
     const isOverlayEnabled = useSignal(isOverlayEnabledSignal);
     const transparency = useSignal(overlayTransparencySignal);
     const autoSelectColor = useSignal(isAutoSelectColorActiveSignal);
+    const [open, setOpen] = createSignal(false);
+    let btnEl;
+
     return (
         <>
             <div>
-                <div class="starting:tw-h-4 starting:tw-w-4 starting:tw-bg-opacity-70 tw-modal-box tw-absolute tw-right-2 tw-top-2 tw-box-border tw-flex !tw-h-[calc-size(auto)] tw-h-auto tw-max-h-[calc(100%-theme(spacing.2)*2-16px-36px)] tw-min-h-20 !tw-w-[calc-size(fit-content)] tw-w-fit tw-min-w-12 tw-max-w-[calc(100%-theme(spacing.2)*2-98px-36px)] tw-scale-100 tw-flex-col tw-justify-items-center tw-overflow-auto tw-overscroll-contain tw-p-2 tw-transition-[color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter,-webkit-backdrop-filter,height]">
+                <div class="tw-modal-box tw-absolute tw-right-2 tw-top-2 tw-box-border tw-flex !tw-h-[calc-size(auto)] tw-h-auto tw-max-h-[calc(100%-theme(spacing.2)*2-16px-36px)] tw-min-h-20 !tw-w-[calc-size(fit-content)] tw-w-fit tw-min-w-12 tw-max-w-[calc(100%-theme(spacing.2)*2-98px-36px)] tw-scale-100 tw-flex-col tw-justify-items-center tw-overflow-auto tw-overscroll-contain tw-p-2 tw-transition-[color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter,-webkit-backdrop-filter,height] starting:tw-h-4 starting:tw-w-4 starting:tw-bg-opacity-70">
                     <div class="tw-grid [grid-template-columns:3rem_1fr_3rem]">
                         <input
                             type="checkbox"
@@ -158,10 +162,10 @@ const BigModal = () => {
                                     </div>
                                     <input type="text" placeholder="Type here" class="w-full tw-input tw-input-bordered tw-max-w-xs" />
                                 </label>
-                                <div class="tw-dropdown">
-                                    <div tabindex="0" role="button" class="tw-tw-btn tw-m-1">
-                                        <img class="tw-h-8 tw-w-8" alt="preview" src="/preview0.png"></img>
-                                    </div>
+                                <div ref={btnEl} tabindex="0" role="button" class="tw-tw-btn tw-m-1">
+                                    <img class="tw-h-8 tw-w-8" alt="preview" src="/preview0.png"></img>
+                                </div>
+                                <Dismiss menuButton={btnEl} open={open} setOpen={setOpen}>
                                     <ul tabindex="0" class="tw-menu tw-dropdown-content tw-z-[1] tw-w-fit tw-rounded-box tw-bg-base-200 tw-p-2 tw-shadow">
                                         <li class="tw-flex tw-flex-row tw-flex-nowrap tw-items-center">
                                             <img class="tw-h-8 tw-w-8" alt="preview" src="/preview0.png"></img>
@@ -180,7 +184,7 @@ const BigModal = () => {
                                             <a>Coronavirus</a>
                                         </li>
                                     </ul>
-                                </div>
+                                </Dismiss>
                             </div>
                             <div class="tw-flex tw-flex-col">
                                 <div class="tw-form-control">
