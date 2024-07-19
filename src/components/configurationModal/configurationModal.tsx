@@ -17,7 +17,6 @@ import { createSignal, Show } from 'solid-js';
 import { useSignal } from '../../store/useSignal';
 import { isAutoSelectColorActiveSignal, isOverlayEnabledSignal, overlayTransparencySignal, showBigModal } from '../../store/slices/overlaySlice';
 import { OverlayThumbnailImageButton } from './overlayThumbnailImage';
-import Dismiss from 'solid-dismiss';
 
 // const makeStyles = createMakeStyles({ useTheme });
 // const useStyles = makeStyles.makeStyles<{ isMinimized: boolean }>()((theme, props) => {
@@ -68,7 +67,6 @@ const BigModal = () => {
     const transparency = useSignal(overlayTransparencySignal);
     const autoSelectColor = useSignal(isAutoSelectColorActiveSignal);
     const [open, setOpen] = createSignal(false);
-    let btnEl;
 
     return (
         <>
@@ -162,29 +160,34 @@ const BigModal = () => {
                                     </div>
                                     <input type="text" placeholder="Type here" class="w-full tw-input tw-input-bordered tw-max-w-xs" />
                                 </label>
-                                <div ref={btnEl} tabindex="0" role="button" class="tw-tw-btn tw-m-1">
-                                    <img class="tw-h-8 tw-w-8" alt="preview" src="/preview0.png"></img>
+                            </div>
+                            <div class="tw-collapse tw-bg-base-200">
+                                <input type="checkbox" class="tw-min-h-0 tw-p-0" checked={open()} onchange={(e) => setOpen(e.target.checked)} />
+                                <div class="tw-collapse-title tw-m-1 tw-min-h-0 tw-p-0">
+                                    <input type="image" class="tw-h-8 tw-w-8" src="/preview0.png" />
                                 </div>
-                                <Dismiss menuButton={btnEl} open={open} setOpen={setOpen}>
-                                    <ul tabindex="0" class="tw-menu tw-dropdown-content tw-z-[1] tw-w-fit tw-rounded-box tw-bg-base-200 tw-p-2 tw-shadow">
-                                        <li class="tw-flex tw-flex-row tw-flex-nowrap tw-items-center">
-                                            <img class="tw-h-8 tw-w-8" alt="preview" src="/preview0.png"></img>
-                                            <a>Earth</a>
+                                <div class="tw-collapse-content tw-m-0 !tw-p-0">
+                                    <ul class="tw-menu tw-m-0 tw-p-0">
+                                        <li>
+                                            <a onclick={() => setOpen(false)}>
+                                                <img class="tw-h-5 tw-w-5" alt="preview" src="/preview0.png" />
+                                                Earth
+                                            </a>
                                         </li>
-                                        <li class="tw-flex tw-flex-row tw-flex-nowrap tw-items-center">
-                                            <img class="tw-h-8 tw-w-8" alt="preview" src="/preview11.png"></img>
-                                            <a>Minimap</a>
+                                        <li>
+                                            <a onclick={() => setOpen(false)}>
+                                                <img class="tw-h-5 tw-w-5" alt="preview" src="/preview11.png" />
+                                                Minimap
+                                            </a>
                                         </li>
-                                        <li class="tw-flex tw-flex-row tw-flex-nowrap tw-items-center">
-                                            <img class="tw-h-8 tw-w-8" alt="preview" src="/preview1.png"></img>
-                                            <a>Moon</a>
-                                        </li>
-                                        <li class="tw-flex tw-flex-row tw-flex-nowrap tw-items-center">
-                                            <img class="tw-h-8 tw-w-8" alt="preview" src="/preview3.png"></img>
-                                            <a>Coronavirus</a>
+                                        <li>
+                                            <a onclick={() => setOpen(false)}>
+                                                <img class="tw-h-5 tw-w-5" alt="preview" src="/preview1.png" />
+                                                Moon
+                                            </a>
                                         </li>
                                     </ul>
-                                </Dismiss>
+                                </div>
                             </div>
                             <div class="tw-flex tw-flex-col">
                                 <div class="tw-form-control">
