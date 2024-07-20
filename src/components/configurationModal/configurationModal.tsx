@@ -15,7 +15,7 @@
 // import OverlayConfig from '../overlayConfig/overlayConfig';
 import { createSignal, Match, Show, Switch } from 'solid-js';
 import { useSignal } from '../../store/useSignal';
-import { dragModeEnabled, isAutoSelectColorActiveSignal, isOverlayEnabledSignal, overlayTransparencySignal, showBigModal } from '../../store/slices/overlaySlice';
+import { dragModeEnabled, isAutoSelectColorActiveSignal, isOverlayEnabledSignal, isShowSmallPixelsActiveSignal, overlayTransparencySignal, showBigModal } from '../../store/slices/overlaySlice';
 import { OverlayThumbnailImageButton } from './overlayThumbnailImage';
 
 // const makeStyles = createMakeStyles({ useTheme });
@@ -161,6 +161,21 @@ const BigModal = () => {
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" class="tw-h-6 tw-w-6" viewBox="0 -960 960 960" fill="currentColor">
                                 <path d="M480-80 310-250l57-57 73 73v-206H235l73 72-58 58L80-480l169-169 57 57-72 72h206v-206l-73 73-57-57 170-170 170 170-57 57-73-73v206h205l-73-72 58-58 170 170-170 170-57-57 73-73H520v205l72-73 58 58L480-80Z" />
+                            </svg>
+                        </button>
+                        <button
+                            class="tw-btn tw-btn-square tw-btn-ghost"
+                            classList={{
+                                'tw-btn-ghost': !smallPixels(),
+                                'tw-btn-primary': smallPixels(),
+                            }}
+                            onclick={() => {
+                                isShowSmallPixelsActiveSignal.set(!isShowSmallPixelsActiveSignal.get());
+                            }}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 960" fill="currentColor">
+                                <rect id="svg_1" height="480" width="480" y="240" x="240" stroke="currentColor" stroke-width="10" fill="#0000000" style="fill-opacity:0" />
+                                <rect stroke="#000" id="svg_2" height="160" width="160" y="400" x="400" />
                             </svg>
                         </button>
                     </div>
