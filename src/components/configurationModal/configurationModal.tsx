@@ -17,6 +17,7 @@ import { createSignal, Match, Show, Switch } from 'solid-js';
 import { useSignal } from '../../store/useSignal';
 import { dragModeEnabled, isAutoSelectColorActiveSignal, isOverlayEnabledSignal, isShowSmallPixelsActiveSignal, overlayTransparencySignal, showBigModal } from '../../store/slices/overlaySlice';
 import { OverlayThumbnailImageButton } from './overlayThumbnailImage';
+import { createDropzone } from '../../hooks/createDropzone';
 
 // const makeStyles = createMakeStyles({ useTheme });
 // const useStyles = makeStyles.makeStyles<{ isMinimized: boolean }>()((theme, props) => {
@@ -69,10 +70,25 @@ const BigModal = () => {
     const [open, setOpen] = createSignal(false);
     const [editMode, setEditMode] = createSignal<'auto' | 'select on map' | 'manual'>('auto');
     const dragMode = useSignal(dragModeEnabled);
+    const smallPixels = useSignal(isShowSmallPixelsActiveSignal);
+
+    const dropzone = createDropzone({
+        accepts: 'image/*',
+        onDrop(files) {
+            console.log(files);
+        },
+    });
+
     return (
         <>
             <div>
-                <div class="tw-modal-box tw-absolute tw-right-2 tw-top-2 tw-box-border tw-flex !tw-h-[calc-size(auto)] tw-h-auto tw-max-h-[calc(100%-theme(spacing.2)*2-16px-36px)] tw-min-h-20 !tw-w-[calc-size(fit-content)] tw-w-fit tw-min-w-12 tw-max-w-[calc(100%-theme(spacing.2)*2-98px-36px)] tw-scale-100 tw-flex-col tw-justify-items-center tw-overflow-auto tw-overscroll-contain tw-p-2 tw-transition-[color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter,-webkit-backdrop-filter,height] starting:tw-h-4 starting:tw-w-4 starting:tw-bg-opacity-70">
+                <div
+                    ref={dropzone.setRef}
+                    classList={{
+                        'tw-border-dashed': dropzone.acceptedItemsHovered(),
+                    }}
+                    class="tw-modal-box tw-absolute tw-right-2 tw-top-2 tw-box-border tw-flex !tw-h-[calc-size(auto)] tw-h-auto tw-max-h-[calc(100%-theme(spacing.2)*2-16px-36px)] tw-min-h-20 !tw-w-[calc-size(fit-content)] tw-w-fit tw-min-w-12 tw-max-w-[calc(100%-theme(spacing.2)*2-98px-36px)] tw-scale-100 tw-flex-col tw-justify-items-center tw-overflow-auto tw-overscroll-contain tw-p-2 tw-transition-[color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter,-webkit-backdrop-filter,height] starting:tw-h-4 starting:tw-w-4 starting:tw-bg-opacity-70"
+                >
                     <div class="tw-grid [grid-template-columns:3rem_1fr_3rem]">
                         <input
                             type="checkbox"
@@ -153,7 +169,7 @@ const BigModal = () => {
                             onclick={() => {
                                 dragModeEnabled.set(!dragModeEnabled.get());
                             }}
-                            class="tw-btn tw-btn-square [grid-area:buttons]"
+                            class="tw-btn tw-btn-square"
                             classList={{
                                 'tw-btn-ghost': !dragMode(),
                                 'tw-btn-primary': dragMode(),

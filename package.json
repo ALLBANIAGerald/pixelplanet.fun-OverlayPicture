@@ -45,6 +45,7 @@
     "dependencies": {
         "@tanstack/solid-query": "^5.51.2",
         "@thisbeyond/solid-dnd": "^0.7.5",
+        "attr-accept": "^2.2.2",
         "comlink": "^4.4.0",
         "events": "^3.3.0",
         "immer": "^10.1.1",
