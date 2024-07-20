@@ -43,7 +43,7 @@ import { createDropzone } from '../../hooks/createDropzone';
 
 function SmallModal() {
     return (
-        <div class="tw-base tw-absolute tw-right-4 tw-top-4 tw-flex tw-size-9 tw-items-center tw-justify-center tw-border tw-border-solid tw-border-black tw-backdrop-blur">
+        <div class="tw-absolute tw-right-4 tw-top-4 tw-flex tw-size-9 tw-items-center tw-justify-center tw-border tw-border-solid tw-border-black tw-backdrop-blur">
             <OverlayThumbnailImageButton
                 onclick={() => {
                     showBigModal.set(!showBigModal.get());

@@ -76,7 +76,7 @@ const App = () => {
     // });
 
     return (
-        <div>
+        <div class="tw-base">
             {/* <ProviderPageStateMapper> */}
             <Show when={isOverlayEnabled()}>
                 <OverlayImages />

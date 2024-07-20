@@ -353,7 +353,7 @@ export function OverlayImages() {
     const movedToById = new Map<number, { screenX: number; screenY: number }>();
     const dragMode = useSignal(dragModeEnabled);
     return (
-        <div id="overlay-images-wrapper" class="tw-base tw-h-0 tw-w-0">
+        <div id="overlay-images-wrapper" class="tw-h-0 tw-w-0">
             <DragDropProvider
                 onDragMove={(e) => {
                     movedToById.set(typeof e.draggable.id === 'string' ? parseInt(e.draggable.id) : e.draggable.id, { screenX: e.draggable.transformed.x, screenY: e.draggable.transformed.y });
