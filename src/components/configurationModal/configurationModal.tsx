@@ -18,7 +18,6 @@ import { useSignal } from '../../store/useSignal';
 import { dragModeEnabled, isAutoSelectColorActiveSignal, isOverlayEnabledSignal, isShowSmallPixelsActiveSignal, overlayTransparencySignal, showBigModal } from '../../store/slices/overlaySlice';
 import { OverlayThumbnailImageButton } from './overlayThumbnailImage';
 import { createDropzone } from '../../hooks/createDropzone';
-import { viewCenterSignal } from '../../store/slices/gameSlice';
 
 // const makeStyles = createMakeStyles({ useTheme });
 // const useStyles = makeStyles.makeStyles<{ isMinimized: boolean }>()((theme, props) => {
@@ -100,7 +99,6 @@ function AddOverlayImageModal() {
 
     const [files, setFiles] = createSignal<File[]>([]);
     const [urlInput, setUrlInput] = createSignal('');
-    const viewCenter = useSignal(viewCenterSignal);
 
     return (
         <dialog ref={(d) => (ref = d)} class="tw-modal">

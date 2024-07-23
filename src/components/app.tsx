@@ -1,15 +1,8 @@
-import type { EventEmitter } from 'events';
 import { useSignal } from '../store/useSignal';
 import { isOverlayEnabledSignal } from '../store/slices/overlaySlice';
 import { OverlayImages } from './overlayImage/overlayImage';
 import { createEffect, Show } from 'solid-js';
 import { ConfigurationModal } from './configurationModal/configurationModal';
-
-declare global {
-    interface Window {
-        pixelPlanetEvents?: EventEmitter;
-    }
-}
 
 // function useWebSocketEvents() {
 //     const dispatch = useAppDispatch();

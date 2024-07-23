@@ -51,6 +51,7 @@
         "immer": "^10.1.1",
         "localforage": "^1.10.0",
         "nanoevents": "^7.0.1",
+        "rxjs": "^7.8.1",
         "signal-polyfill": "^0.1.1",
         "solid-js": "^1.8.18"
     }
