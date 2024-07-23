@@ -1,21 +1,10 @@
-import { viewPortTouchClientCoordinatesSignal } from '../../gameInjection/viewport';
-import { Signal } from 'signal-polyfill';
-import {
-    PageState,
-    selectPageStateCanvasId,
-    selectPageStateCanvasPalette,
-    selectPageStateCanvasReservedColors,
-    selectPageStateHoverPixel,
-    selectPageStateRoundedCanvasViewCenter,
-} from '../../utils/getPageReduxStore';
-import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
+import { PageState, selectPageStateCanvasPalette, selectPageStateCanvasReservedColors } from '../../utils/getPageReduxStore';
 import { unsafeWindow } from 'vite-plugin-monkey/dist/client';
 import { createSignalComputed, createSignalState } from '../../utils/signalPrimitives/createSignal';
 import { createSignalComputedNested } from '../../utils/signalPrimitives/createSignalComputedNested';
-import { map, Observable, share, shareReplay, switchMap } from 'rxjs';
-import { effect } from '../effect';
+import { fromEvent, map, Observable, share, shareReplay, switchMap } from 'rxjs';
 import { EventEmitter } from 'events';
-import { obsToSignal, signalToObs } from '../obsToSignal';
+import { obsToSignal } from '../obsToSignal';
 import { locationHrefObs } from '../../utils/signalPrimitives/locationHref';
 
 export interface Cell {
@@ -32,7 +21,7 @@ export const selectCanvasUserPalette = createSignalComputed(() => {
     return palette.slice(reservedColorCount);
 });
 
-const pixelPlanetEvents = createSignalState(unsafeWindow.pixelPlanetEvents, (s) => {
+const pixelPlanetEventsObs = new Observable<NonNullable<typeof unsafeWindow.pixelPlanetEvents>>((subscriber) => {
     let definedSetter = false;
     if (!unsafeWindow.pixelPlanetEvents) {
         definedSetter = true;
@@ -42,96 +31,23 @@ const pixelPlanetEvents = createSignalState(unsafeWindow.pixelPlanetEvents, (s) 
                 delete unsafeWindow.pixelPlanetEvents;
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- workaround if events not initialized yet
                 unsafeWindow.pixelPlanetEvents = v;
-                s.set(unsafeWindow.pixelPlanetEvents);
+                subscriber.next(unsafeWindow.pixelPlanetEvents);
+                subscriber.complete();
             },
             configurable: true,
         });
+    } else {
+        subscriber.next(unsafeWindow.pixelPlanetEvents);
+        subscriber.complete();
         return;
     }
-
-    queueMicrotask(() => {
-        if (!s.get()) {
-            s.set(unsafeWindow.pixelPlanetEvents);
-        }
-    });
 
     return () => {
         if (definedSetter) {
             delete unsafeWindow.pixelPlanetEvents;
         }
     };
-});
-
-function createEventSignal<T>(validate: (value: unknown) => value is T, defaultValue: T, eventName: 'setviewcoordinates' | 'setscale' | 'selectcanvas' | 'sethover' | 'receivechunk') {
-    return createSignalComputedNested(() => {
-        const events = pixelPlanetEvents.get();
-        if (!events) return new Signal.State(defaultValue);
-        return createSignalState(defaultValue, (s) => {
-            const handleEvent = (value: unknown) => {
-                if (!value) return;
-                if (!validate(value)) return;
-                s.set(value);
-            };
-            events.on(eventName, handleEvent);
-            return () => events.off(eventName, handleEvent);
-        });
-    });
-}
-
-const selectedCanvasIdEventSignal = createEventSignal((v) => typeof v === 'string', undefined, 'selectcanvas');
-const selectedCanvasIdFallbackSignal = createSignalComputed(() => {
-    // Or watch url changes and convert from letter to id
-    return selectPageStateCanvasId.get();
-});
-const selectedCanvasIdSignal = createSignalComputed(() => {
-    const eventValue = selectedCanvasIdEventSignal.get();
-    if (eventValue == null) return selectedCanvasIdFallbackSignal.get();
-    return eventValue;
-});
-
-const hoverEventSignal = createEventSignal(
-    (value): value is [number, number] => !!(value && Array.isArray(value) && value.length === 2 && typeof value[0] === 'number' && typeof value[1] === 'number'),
-    undefined,
-    'sethover'
-);
-const hoverSignal = createSignalComputed(() => {
-    const eventValue = hoverEventSignal.get();
-    if (!eventValue) return selectPageStateHoverPixel.get();
-    return eventValue;
-});
-
-const touchHoverPixelSignal = createSignalComputed(() => {
-    const touchClientCoordinates = viewPortTouchClientCoordinatesSignal.get();
-    if (!touchClientCoordinates) return;
-    const { clientX, clientY, timestamp } = touchClientCoordinates;
-    const { height, width } = windowInnerSize.get();
-    const viewScale = viewScaleSignal.get();
-    const viewCenter = viewCenterSignal.get();
-    const x = Math.floor((clientX - width / 2) / viewScale + viewCenter.x);
-    const y = Math.floor((clientY - height / 2) / viewScale + viewCenter.y);
-    return { x, y, timestamp };
-});
-
-const hoverPixelSignal = createSignalComputed(() => {
-    const touchPixel = touchHoverPixelSignal.get();
-    const pageHover = latestPageHoverPixelState.get();
-    const view = latestRoundedViewCenter.get();
-    const latest = [touchPixel, pageHover, view].sort((a, b) => (b?.timestamp ?? 0) - (a?.timestamp ?? 0))[0];
-    if (!latest) return { x: 0, y: 0 };
-    return { x: latest.x, y: latest.y };
-});
-
-const latestPageHoverPixelState = createSignalComputed(() => {
-    const p = selectPageStateHoverPixel.get();
-    if (!p) return undefined;
-    return { ...p, timestamp: Date.now() };
-});
-
-const latestRoundedViewCenter = createSignalComputed(() => {
-    const view = selectPageStateRoundedCanvasViewCenter.get();
-    if (!view) return undefined;
-    return { ...view, timestamp: Date.now() };
-});
+}).pipe(shareReplay({ bufferSize: 1, refCount: true }));
 
 const registerPixelUpdatesObs = new Observable<NonNullable<typeof unsafeWindow.registerPixelUpdates>>((subscriber) => {
     let definedSetter = false;
@@ -148,10 +64,10 @@ const registerPixelUpdatesObs = new Observable<NonNullable<typeof unsafeWindow.r
             },
             configurable: true,
         });
-        return;
     } else {
         subscriber.next(unsafeWindow.registerPixelUpdates);
         subscriber.complete();
+        return;
     }
 
     return () => {
@@ -167,21 +83,10 @@ const registerPixelUpdatesObs = new Observable<NonNullable<typeof unsafeWindow.r
     })
 );
 
-const pixelPlanetEventsObs = signalToObs(pixelPlanetEvents);
-
 function createPixelPlanetEventObservable<Key extends keyof PixelPlanetEventTypes>(key: Key) {
     return pixelPlanetEventsObs.pipe(
-        switchMap((e) => {
-            return new Observable<PixelPlanetEventTypes[Key]>((subscriber) => {
-                const handleEvent = (...args: PixelPlanetEventTypes[Key]) => {
-                    subscriber.next(args);
-                };
-                // @ts-expect-error don't know how to fix this this type miss-match, key of PixelPlanetEventTypes should work
-                e.on(key, handleEvent);
-                // @ts-expect-error don't know how to fix this this type miss-match, key of PixelPlanetEventTypes should work
-                return () => e.off(key, handleEvent);
-            });
-        })
+        switchMap((e) => fromEvent(e, key)),
+        map((v) => v as PixelPlanetEventTypes[Key])
     );
 }
 
