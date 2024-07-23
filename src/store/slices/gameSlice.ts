@@ -133,8 +133,7 @@ const latestRoundedViewCenter = createSignalComputed(() => {
     return { ...view, timestamp: Date.now() };
 });
 
-// TODO comparing same solution with signals vs observables
-const registerPixelUpdatesObs = new Observable((subscriber) => {
+const registerPixelUpdatesObs = new Observable<NonNullable<typeof unsafeWindow.registerPixelUpdates>>((subscriber) => {
     let definedSetter = false;
     if (!unsafeWindow.registerPixelUpdates) {
         definedSetter = true;
@@ -167,36 +166,6 @@ const registerPixelUpdatesObs = new Observable((subscriber) => {
         refCount: true,
     })
 );
-
-const registerPixelUpdatesSignal = createSignalState(unsafeWindow.registerPixelUpdates, (s) => {
-    let definedSetter = false;
-    if (!unsafeWindow.registerPixelUpdates) {
-        definedSetter = true;
-        Object.defineProperty(unsafeWindow, 'registerPixelUpdates', {
-            set: (v) => {
-                definedSetter = false;
-                delete unsafeWindow.registerPixelUpdates;
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- workaround if events not initialized yet
-                unsafeWindow.registerPixelUpdates = v;
-                s.set(unsafeWindow.registerPixelUpdates);
-            },
-            configurable: true,
-        });
-        return;
-    }
-
-    queueMicrotask(() => {
-        if (!s.get()) {
-            s.set(unsafeWindow.registerPixelUpdates);
-        }
-    });
-
-    return () => {
-        if (definedSetter) {
-            delete unsafeWindow.registerPixelUpdates;
-        }
-    };
-});
 
 const pixelPlanetEventsObs = signalToObs(pixelPlanetEvents);
 
@@ -256,25 +225,26 @@ export const viewHoverObs = hoverEventObs.pipe(
 );
 const receiveChunkEventObs = createPixelPlanetEventObservable('receivechunk');
 export const receiveChunkObs = receiveChunkEventObs.pipe(map((value) => value[0]));
-const pixelUpdateSharedObs = new Observable<Parameters<Parameters<NonNullable<ReturnType<typeof registerPixelUpdatesSignal.get>>>[0]>>((subscriber) => {
-    const dispose = effect(() => {
-        const registerPixelUpdates = registerPixelUpdatesSignal.get();
-        if (!registerPixelUpdates) return undefined;
-        // TODO, only 1 extension currently can be registered, new registration will override previous extension
-        let handleEvent = (chunkI: number, chunkJ: number, pixelsOffsetInChunkAndColor: [number, number][]) => {
-            subscriber.next([chunkI, chunkJ, pixelsOffsetInChunkAndColor]);
-        };
-        const handleEventWrapper = (chunkI: number, chunkJ: number, pixelsOffsetInChunkAndColor: [number, number][]) => {
-            handleEvent(chunkI, chunkJ, pixelsOffsetInChunkAndColor);
-        };
-        registerPixelUpdates(handleEventWrapper);
-        return () => {
-            // there is no unregister api currently
-            handleEvent = () => undefined;
-        };
-    });
-    return dispose;
-}).pipe(share());
+const pixelUpdateSharedObs = registerPixelUpdatesObs.pipe(
+    switchMap(
+        (registerPixelUpdates) =>
+            new Observable<Parameters<Parameters<NonNullable<typeof window.registerPixelUpdates>>[0]>>((subscriber) => {
+                // TODO, only 1 extension currently can be registered, new registration will override previous extension
+                let handleEvent = (chunkI: number, chunkJ: number, pixelsOffsetInChunkAndColor: [number, number][]) => {
+                    subscriber.next([chunkI, chunkJ, pixelsOffsetInChunkAndColor]);
+                };
+                const handleEventWrapper = (chunkI: number, chunkJ: number, pixelsOffsetInChunkAndColor: [number, number][]) => {
+                    handleEvent(chunkI, chunkJ, pixelsOffsetInChunkAndColor);
+                };
+                registerPixelUpdates(handleEventWrapper);
+                return () => {
+                    // there is no unregister api currently
+                    handleEvent = () => undefined;
+                };
+            })
+    ),
+    share()
+);
 
 export const pixelUpdateObs = pixelUpdateSharedObs.pipe(
     map((pixelUpdate) => ({
