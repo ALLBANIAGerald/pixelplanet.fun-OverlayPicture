@@ -4,6 +4,7 @@
         "composite": true,
         "types": ["vite/client"],
         "strict": true,
+        "strictNullChecks": true,
         "outDir": "./dist/",
         "noImplicitAny": true,
         "module": "ESNext",

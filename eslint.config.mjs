@@ -14,8 +14,9 @@ export default tseslint.config(
     {
         languageOptions: {
             parserOptions: {
-                project: ['tsconfig.json'],
+                project: './tsconfig.json',
+                EXPERIMENTAL_useSourceOfProjectReferenceRedirect: true,
             },
         },
-    },
+    }
 );

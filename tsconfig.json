@@ -1,4 +1,7 @@
 {
     "$schema": "https://json.schemastore.org/tsconfig",
-    "references": [{ "path": "./tsconfig.src.json" }, { "path": "./tsconfig.node.json" }]
+    "references": [{ "path": "./tsconfig.src.json" }, { "path": "./tsconfig.node.json" }],
+    "compilerOptions": {
+        "strictNullChecks": true
+    }
 }
