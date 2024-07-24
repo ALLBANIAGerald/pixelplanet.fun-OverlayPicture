@@ -2,10 +2,12 @@ import { PageState, selectPageStateCanvasPalette, selectPageStateCanvasReservedC
 import { unsafeWindow } from 'vite-plugin-monkey/dist/client';
 import { createSignalComputed, createSignalState } from '../../utils/signalPrimitives/createSignal';
 import { createSignalComputedNested } from '../../utils/signalPrimitives/createSignalComputedNested';
-import { fromEvent, map, Observable, share, shareReplay, switchMap } from 'rxjs';
+import { combineLatestWith, distinctUntilChanged, filter, fromEvent, map, Observable, share, shareReplay, switchMap } from 'rxjs';
 import { EventEmitter } from 'events';
-import { obsToSignal } from '../obsToSignal';
+import { obsToSignal, signalToObs } from '../obsToSignal';
 import { locationHrefObs } from '../../utils/signalPrimitives/locationHref';
+import { viewPortSignal } from '../../gameInjection/viewport';
+import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
 
 export interface Cell {
     x: number;
@@ -88,15 +90,13 @@ function createPixelPlanetEventObservable<Key extends keyof PixelPlanetEventType
     );
 }
 
-const viewCoordinatesEventObs = createPixelPlanetEventObservable('setviewcoordinates');
-export const viewCenterObs = viewCoordinatesEventObs.pipe(
+export const viewCenterObs = createPixelPlanetEventObservable('setviewcoordinates').pipe(
     map((value) => ({
         x: value[0][0],
         y: value[0][1],
     }))
 );
-const scaleEventObs = createPixelPlanetEventObservable('setscale');
-export const viewScaleObs = scaleEventObs.pipe(map((value) => value[0]));
+export const viewScaleObs = createPixelPlanetEventObservable('setscale').pipe(map((value) => value[0]));
 
 function getViewScaleFromUrl(hash: string) {
     // "#d,0,0,15"
@@ -117,17 +117,14 @@ export const viewScaleSignal = createSignalComputed(() => {
     return eventValue;
 });
 
-const currentCanvasEventObs = createPixelPlanetEventObservable('selectcanvas');
-export const currentCanvasIdObs = currentCanvasEventObs.pipe(map((value) => value[0]));
-const hoverEventObs = createPixelPlanetEventObservable('sethover');
-export const viewHoverObs = hoverEventObs.pipe(
+export const currentCanvasIdObs = createPixelPlanetEventObservable('selectcanvas').pipe(map((value) => value[0]));
+export const viewHoverObs = createPixelPlanetEventObservable('sethover').pipe(
     map((value) => ({
         x: value[0][0],
         y: value[0][1],
     }))
 );
-const receiveChunkEventObs = createPixelPlanetEventObservable('receivechunk');
-export const receiveChunkObs = receiveChunkEventObs.pipe(map((value) => value[0]));
+export const receiveChunkObs = createPixelPlanetEventObservable('receivechunk').pipe(map((value) => value[0]));
 const pixelUpdateSharedObs = registerPixelUpdatesObs.pipe(
     switchMap(
         (registerPixelUpdates) =>
@@ -185,7 +182,7 @@ const templateLoaderObs = new Observable<NonNullable<typeof unsafeWindow.templat
     };
 }).pipe(shareReplay({ bufferSize: 1, refCount: true }));
 
-const templateLoaderReadyObs = templateLoaderObs
+export const templateLoaderReadyObs = templateLoaderObs
     .pipe(
         switchMap(
             (templateLoader) =>
@@ -242,6 +239,49 @@ export const viewCenterSignal = createSignalComputed(() => {
     const eventValue = viewCenterEventSignal.get();
     if (!eventValue) return viewCenterLocationFallbackSignal.get();
     return eventValue;
+});
+
+const viewportObsOptional = signalToObs(viewPortSignal);
+const viewportObs = viewportObsOptional.pipe(
+    filter((v) => !!v),
+    shareReplay({ bufferSize: 1, refCount: true })
+);
+
+function resizeObservable(elem: HTMLElement) {
+    return new Observable<ResizeObserverEntry[]>((subscriber) => {
+        const ro = new ResizeObserver((entries) => {
+            subscriber.next(entries);
+        });
+
+        ro.observe(elem);
+        return function unsubscribe() {
+            ro.unobserve(elem);
+        };
+    });
+}
+
+const viewportSizeObs = viewportObs.pipe(
+    switchMap((v) => resizeObservable(v)),
+    map((e) => (e[0]?.borderBoxSize[0] ? { height: e[0].borderBoxSize[0].blockSize, width: e[0].borderBoxSize[0].inlineSize } : undefined)),
+    filter((e) => !!e),
+    shareReplay({ bufferSize: 1, refCount: true })
+);
+
+export const templatesIdsInViewObs = templateLoaderReadyObs.pipe(
+    combineLatestWith(currentCanvasIdObs, viewportSizeObs, viewCenterObs),
+    map(([templateLoader, currentCanvasId, viewportSize, viewCenter]) =>
+        templateLoader.getTemplatesInView(currentCanvasId, viewCenter.x, viewCenter.y, viewportSize.width / 2, viewportSize.height / 2)
+    ),
+    map((x) => new Set(x.map((t) => t.imageId))),
+    distinctUntilChanged((prev, curr) => prev.symmetricDifference(curr).size === 0),
+    shareReplay({ bufferSize: 1, refCount: true })
+);
+
+const viewportSizeOptionalSignal = obsToSignal(viewportSizeObs);
+export const viewportSizeSignal = createSignalComputed(() => {
+    const viewportSize = viewportSizeOptionalSignal.get();
+    if (viewportSize) return viewportSize;
+    return windowInnerSize.get();
 });
 
 interface ChunkFromEvent {

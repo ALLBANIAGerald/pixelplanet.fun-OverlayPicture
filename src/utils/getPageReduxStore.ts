@@ -1,7 +1,12 @@
-import { Store } from 'redux';
-
 import { createSignalComputedNested } from './signalPrimitives/createSignalComputedNested';
 import { createSignalComputed, createSignalState } from './signalPrimitives/createSignal';
+import { signalToObs } from '../store/obsToSignal';
+import { distinctUntilChanged, map, Observable, reduce, shareReplay, switchMap } from 'rxjs';
+
+interface Store<StoreState> {
+    subscribe: (callback: () => void) => () => void;
+    getState: () => StoreState;
+}
 
 function isStoreFromRedux(store: any) {
     if (typeof store !== 'object') return false;
@@ -169,6 +174,39 @@ export function setViewCoordinates(view: [number, number]) {
     };
 }
 
+export const pageReduxStateObs = signalToObs(pageReduxStoreSignal).pipe(
+    switchMap(
+        (store) =>
+            new Observable<PageState>((subscriber) => {
+                if (store.type !== 'success') return;
+                const unsub = store.store.subscribe(() => {
+                    subscriber.next(store.store.getState());
+                });
+                return () => {
+                    unsub();
+                };
+            })
+    ),
+    shareReplay({ bufferSize: 1, refCount: true })
+);
+type Observed<T> = T extends Observable<infer X> ? X : never;
+const templatesObs = pageReduxStateObs.pipe(map((x) => x.templates));
+const templateListObs = templatesObs.pipe(map((x) => x.list));
+export const templateByIdObs = templateListObs.pipe(
+    map((x) =>
+        x.reduce((acc, value) => {
+            acc.set(value.imageId, value);
+            return acc;
+        }, new Map<number, Observed<typeof templateListObs>[0]>())
+    ),
+    shareReplay({ bufferSize: 1, refCount: true })
+);
+export const templatesIdsObs = templatesObs.pipe(
+    map((x) => new Set(x.list.map((t) => t.imageId))),
+    distinctUntilChanged((prev, curr) => prev.symmetricDifference(curr).size === 0),
+    shareReplay({ bufferSize: 1, refCount: true })
+);
+
 const latestStateSignal = createSignalComputedNested(() => {
     const store = pageReduxStoreSignal.get();
     if (store.type !== 'success') return createSignalComputed<PageState | undefined>(() => undefined);
@@ -272,6 +310,14 @@ export interface PageState {
     contextMenu: ContextMenu;
     chatRead: ChatRead;
     fetching: Fetching;
+    templates: {
+        available: true;
+        list: { canvasId: string; enabled: boolean; height: number; imageId: number; title: string; width: number; x: number; y: number }[];
+        mEnabled: false;
+        oOpacity: 40;
+        oSmallPxls: true;
+        ovEnabled: false;
+    };
     _persist: Persist;
 }
 

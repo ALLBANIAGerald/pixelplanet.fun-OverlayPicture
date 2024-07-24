@@ -1,16 +1,8 @@
 import { useSignal } from '../../store/useSignal';
-import { selectPageStateCanvasId, selectPageStateCanvasPalette } from '../../utils/getPageReduxStore';
-import { viewCenterSignal, viewScaleSignal } from '../../store/slices/gameSlice';
-import {
-    isShowSmallPixelsActiveSignal,
-    OverlayImage,
-    overlayImagesById,
-    overlayTransparencySignal,
-    overlayImagesIdsVisibleOnScreen,
-    updateOverlayImageLocation,
-    dragModeEnabled,
-} from '../../store/slices/overlaySlice';
-import { Accessor, createMemo, createRenderEffect, createSignal, For, Match, onCleanup, Show, Switch } from 'solid-js';
+import { selectPageStateCanvasId, selectPageStateCanvasPalette, templateByIdObs } from '../../utils/getPageReduxStore';
+import { templateLoaderReadyObs, templatesIdsInViewObs, viewCenterSignal, viewportSizeSignal, viewScaleSignal } from '../../store/slices/gameSlice';
+import { isShowSmallPixelsActiveSignal, OverlayImage, overlayTransparencySignal, dragModeEnabled } from '../../store/slices/overlaySlice';
+import { Accessor, createMemo, createRenderEffect, createSignal, For, from, Match, onCleanup, Show, Switch } from 'solid-js';
 import { gameCoordsToScreen, screenToGameCoords } from '../../utils/coordConversion';
 import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
 import { GM_xmlhttpRequest } from 'vite-plugin-monkey/dist/client';
@@ -33,7 +25,6 @@ async function loadUrlToImage(url: string) {
 }
 
 function queryLoadOverlayImageToImage(overlayImageId: Accessor<number>) {
-    const imagesById = useSignal(overlayImagesById);
     const image = createMemo(() => imagesById()[overlayImageId()]);
     const fileUrl = createMemo(() => {
         const i = image();
@@ -90,7 +81,6 @@ function fetchImageFallback(fileUrl: string, abortSignal?: AbortSignal) {
 }
 
 function queryImageFallback(overlayImageId: Accessor<number>) {
-    const imagesById = useSignal(overlayImagesById);
     const image = createMemo(() => imagesById()[overlayImageId()]);
     const imageUrl = createMemo(() => {
         const imageFile = image()?.imageFile;
@@ -277,7 +267,6 @@ const OverlayImageImg = (props: { image: OverlayImage; imageUrl: string }) => {
 };
 
 function useOverlayImageFileUrl(overlayImageId: Accessor<number>) {
-    const imagesById = useSignal(overlayImagesById);
     const image = createMemo(() => imagesById()[overlayImageId()]);
     const fileUrl = createMemo(() => {
         const i = image();
@@ -287,16 +276,13 @@ function useOverlayImageFileUrl(overlayImageId: Accessor<number>) {
     return fileUrl;
 }
 
-function OverlayImageWithControls(props: { image: OverlayImage }) {
-    const fileUrl = useOverlayImageFileUrl(() => props.image.id);
-    const imageData = useOverlayImageImageData(() => props.image.id);
+function OverlayImageWithControls(props: { template: { id: number; x: number; y: number } }) {
+    const draggable = createDraggable(props.template.id);
 
-    const draggable = createDraggable(props.image.id);
-
-    const windowSize = useSignal(windowInnerSize);
+    const viewPortSize = useSignal(viewportSizeSignal);
     const viewCenterGameCoords = useSignal(viewCenterSignal);
     const viewScale = useSignal(viewScaleSignal);
-    const screenOffset = createMemo(() => gameCoordsToScreen(props.image.location, windowSize(), viewCenterGameCoords(), viewScale()));
+    const screenOffset = createMemo(() => gameCoordsToScreen({ x: props.template.x, y: props.template.y }, viewPortSize(), viewCenterGameCoords(), viewScale()));
     const dragMode = useSignal(dragModeEnabled);
 
     return (
@@ -313,11 +299,7 @@ function OverlayImageWithControls(props: { image: OverlayImage }) {
             }}
             {...draggable.dragActivators}
         >
-            <div class="tw-pointer-events-none">
-                <Switch fallback={<Show when={fileUrl()}>{(fileUrl) => <OverlayImageImg image={props.image} imageUrl={fileUrl()} />}</Show>}>
-                    <Match when={imageData()}>{(imageData) => <OverlayImageCanvas image={props.image} imageData={imageData()} />}</Match>
-                </Switch>
-            </div>
+            <div class="tw-pointer-events-none"></div>
             <Show when={dragMode()}>
                 <button class="tw-btn tw-btn-primary tw-absolute -tw-left-6 -tw-top-6 tw-h-12 tw-w-12 tw-p-0">
                     <svg xmlns="http://www.w3.org/2000/svg" class="tw-h-6 tw-w-6" viewBox="0 -960 960 960" fill="currentColor">
@@ -330,7 +312,6 @@ function OverlayImageWithControls(props: { image: OverlayImage }) {
 }
 
 function OverlayImageRender(props: { imageId: number }) {
-    const imagesById = useSignal(overlayImagesById);
     const image = createMemo(() => imagesById()[props.imageId]);
 
     return <Show when={image()}>{(image) => <OverlayImageWithControls image={image()} />}</Show>;
@@ -340,15 +321,18 @@ function useMoveImageTo() {
     const windowSize = useSignal(windowInnerSize);
     const viewCenter = useSignal(viewCenterSignal);
     const viewScale = useSignal(viewScaleSignal);
-
-    return (imageId: number, screenX: number, screenY: number) => {
+    const readyTemplateLoader = from(templateLoaderReadyObs);
+    const templatesById = from(templateByIdObs);
+    return (templateId: number, screenX: number, screenY: number) => {
+        const template = templatesById()?.get(templateId);
+        if (!template) return;
         const gameCoords = screenToGameCoords({ clientX: screenX, clientY: screenY }, windowSize(), viewCenter(), viewScale());
-        updateOverlayImageLocation(imageId, Math.round(gameCoords.x), Math.round(gameCoords.y));
+        readyTemplateLoader()?.changeTemplate(template.title, { x: Math.round(gameCoords.x), y: Math.round(gameCoords.y) });
     };
 }
 
 export function OverlayImages() {
-    const imageIds = useSignal(overlayImagesIdsVisibleOnScreen);
+    const imageIds = from(templatesIdsInViewObs);
     const moveImageTo = useMoveImageTo();
     const movedToById = new Map<number, { screenX: number; screenY: number }>();
     const dragMode = useSignal(dragModeEnabled);
@@ -369,7 +353,7 @@ export function OverlayImages() {
                 <Show when={dragMode()}>
                     <DragDropSensors />
                 </Show>
-                <For each={[...imageIds()]}>{(imageId) => <OverlayImageRender imageId={imageId} />}</For>;
+                <For each={[...(imageIds() ?? [])]}>{(imageId) => <OverlayImageRender imageId={imageId} />}</For>;
             </DragDropProvider>
         </div>
     );

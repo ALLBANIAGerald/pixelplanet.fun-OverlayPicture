@@ -9,7 +9,7 @@ function isViewportElement(element: HTMLElement): boolean {
     return true;
 }
 
-const viewPortSignal = createSignalComputedNested(() => {
+export const viewPortSignal = createSignalComputedNested(() => {
     const body = documentBody.get();
     if (!body) return;
     const canvases = body.getElementsByTagName('canvas');
