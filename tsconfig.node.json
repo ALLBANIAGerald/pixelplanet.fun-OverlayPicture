@@ -1,0 +1,24 @@
+{
+    "compilerOptions": {
+        "composite": true,
+        "types": ["vite/client"],
+        "strict": true,
+        "outDir": "./dist/",
+        "noImplicitAny": true,
+        "module": "ESNext",
+        "lib": ["ESNext"],
+        "target": "ESNext",
+        "moduleResolution": "Bundler",
+        "allowSyntheticDefaultImports": true,
+        "allowJs": true,
+        "skipLibCheck": true,
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "noFallthroughCasesInSwitch": true,
+        "noImplicitThis": true,
+        "resolveJsonModule": true,
+        "noUncheckedIndexedAccess": true,
+        "isolatedModules": true
+    },
+    "include": ["vite.config.ts", "tailwind.config.js", "package.json", "postcss.config.js", "eslint.config.mjs"]
+}
