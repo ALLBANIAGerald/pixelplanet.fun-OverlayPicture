@@ -1,8 +1,7 @@
-import { PageState, selectPageStateCanvasPalette, selectPageStateCanvasReservedColors } from '../../utils/getPageReduxStore';
+import { PageState, selectPageStateCanvasId, selectPageStateCanvasPalette, selectPageStateCanvasReservedColors } from '../../utils/getPageReduxStore';
 import { unsafeWindow } from 'vite-plugin-monkey/dist/client';
-import { createSignalComputed, createSignalState } from '../../utils/signalPrimitives/createSignal';
-import { createSignalComputedNested } from '../../utils/signalPrimitives/createSignalComputedNested';
-import { combineLatestWith, distinctUntilChanged, filter, fromEvent, map, Observable, share, shareReplay, switchMap } from 'rxjs';
+import { createSignalComputed } from '../../utils/signalPrimitives/createSignal';
+import { combineLatestWith, distinctUntilChanged, filter, fromEvent, map, Observable, raceWith, share, shareReplay, switchMap, take } from 'rxjs';
 import { EventEmitter } from 'events';
 import { obsToSignal, signalToObs } from '../obsToSignal';
 import { locationHrefObs } from '../../utils/signalPrimitives/locationHref';
@@ -94,9 +93,13 @@ export const viewCenterObs = createPixelPlanetEventObservable('setviewcoordinate
     map((value) => ({
         x: value[0],
         y: value[1],
-    }))
+    })),
+    shareReplay({ bufferSize: 1, refCount: true })
 );
-export const viewScaleObs = createPixelPlanetEventObservable('setscale').pipe(map((value) => value));
+export const viewScaleObs = createPixelPlanetEventObservable('setscale').pipe(
+    map((value) => value),
+    shareReplay({ bufferSize: 1, refCount: true })
+);
 
 function getViewScaleFromUrl(hash: string) {
     // "#d,0,0,15"
@@ -117,12 +120,22 @@ export const viewScaleSignal = createSignalComputed(() => {
     return eventValue;
 });
 
-export const currentCanvasIdObs = createPixelPlanetEventObservable('selectcanvas');
+const fallbackCanvasIdObs = signalToObs(selectPageStateCanvasId).pipe(
+    filter((c) => c !== undefined),
+    take(1)
+);
+export const currentCanvasIdObs = createPixelPlanetEventObservable('selectcanvas').pipe(
+    // TODO add fallback from URL
+    raceWith(fallbackCanvasIdObs),
+    switchMap((c) => c),
+    shareReplay({ bufferSize: 1, refCount: true })
+);
 export const viewHoverObs = createPixelPlanetEventObservable('sethover').pipe(
     map((value) => ({
         x: value[0],
         y: value[1],
-    }))
+    })),
+    shareReplay({ bufferSize: 1, refCount: true })
 );
 export const receiveChunkObs = createPixelPlanetEventObservable('receivechunk');
 const pixelUpdateSharedObs = registerPixelUpdatesObs.pipe(

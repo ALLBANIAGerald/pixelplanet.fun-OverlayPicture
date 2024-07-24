@@ -270,7 +270,7 @@ export const selectPageStateCanvasReservedColors = createSignalComputed(() => {
 
 export const selectPageStateCanvasId = createSignalComputed(() => {
     const state = latestStateSignal.get();
-    return state?.canvas.canvasId ?? '0';
+    return state?.canvas.canvasId;
 });
 
 export const selectPageStateCanvasSize = createSignalComputed(() => {
