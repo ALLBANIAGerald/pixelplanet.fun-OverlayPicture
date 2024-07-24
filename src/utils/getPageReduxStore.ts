@@ -119,7 +119,7 @@ const pageReduxStoreSignal = createSignalComputedNested(() => {
                     const store = findStoreInRoot(rootEl);
                     if (store) s.set({ type: 'success', store });
                     else s.set({ type: 'error', error: 'window not accessible' });
-                }, 1000);
+                }, 2000);
             } else {
                 // We don't have direct access page's `window` instance
                 s.set({ type: 'error', error: 'window not accessible' });

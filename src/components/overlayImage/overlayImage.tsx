@@ -276,8 +276,8 @@ function useOverlayImageFileUrl(overlayImageId: Accessor<number>) {
     return fileUrl;
 }
 
-function OverlayImageWithControls(props: { template: { id: number; x: number; y: number } }) {
-    const draggable = createDraggable(props.template.id);
+function OverlayImageWithControls(props: { template: { imageId: number; x: number; y: number } }) {
+    const draggable = createDraggable(props.template.imageId);
 
     const viewPortSize = useSignal(viewportSizeSignal);
     const viewCenterGameCoords = useSignal(viewCenterSignal);
@@ -312,9 +312,10 @@ function OverlayImageWithControls(props: { template: { id: number; x: number; y:
 }
 
 function OverlayImageRender(props: { imageId: number }) {
-    const image = createMemo(() => imagesById()[props.imageId]);
+    const templatesById = from(templateByIdObs);
+    const template = createMemo(() => templatesById()?.get(props.imageId));
 
-    return <Show when={image()}>{(image) => <OverlayImageWithControls image={image()} />}</Show>;
+    return <Show when={template()}>{(template) => <OverlayImageWithControls template={template()} />}</Show>;
 }
 
 function useMoveImageTo() {

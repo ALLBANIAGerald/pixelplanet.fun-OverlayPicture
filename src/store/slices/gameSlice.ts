@@ -86,17 +86,17 @@ const registerPixelUpdatesObs = new Observable<NonNullable<typeof unsafeWindow.r
 function createPixelPlanetEventObservable<Key extends keyof PixelPlanetEventTypes>(key: Key) {
     return pixelPlanetEventsObs.pipe(
         switchMap((e) => fromEvent(e, key)),
-        map((v) => v as PixelPlanetEventTypes[Key])
+        map((v) => v as PixelPlanetEventTypes[Key][0])
     );
 }
 
 export const viewCenterObs = createPixelPlanetEventObservable('setviewcoordinates').pipe(
     map((value) => ({
-        x: value[0][0],
-        y: value[0][1],
+        x: value[0],
+        y: value[1],
     }))
 );
-export const viewScaleObs = createPixelPlanetEventObservable('setscale').pipe(map((value) => value[0]));
+export const viewScaleObs = createPixelPlanetEventObservable('setscale').pipe(map((value) => value));
 
 function getViewScaleFromUrl(hash: string) {
     // "#d,0,0,15"
@@ -117,14 +117,14 @@ export const viewScaleSignal = createSignalComputed(() => {
     return eventValue;
 });
 
-export const currentCanvasIdObs = createPixelPlanetEventObservable('selectcanvas').pipe(map((value) => value[0]));
+export const currentCanvasIdObs = createPixelPlanetEventObservable('selectcanvas');
 export const viewHoverObs = createPixelPlanetEventObservable('sethover').pipe(
     map((value) => ({
-        x: value[0][0],
-        y: value[0][1],
+        x: value[0],
+        y: value[1],
     }))
 );
-export const receiveChunkObs = createPixelPlanetEventObservable('receivechunk').pipe(map((value) => value[0]));
+export const receiveChunkObs = createPixelPlanetEventObservable('receivechunk');
 const pixelUpdateSharedObs = registerPixelUpdatesObs.pipe(
     switchMap(
         (registerPixelUpdates) =>
