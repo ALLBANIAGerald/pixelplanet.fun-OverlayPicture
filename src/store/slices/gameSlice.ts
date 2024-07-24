@@ -26,10 +26,9 @@ const pixelPlanetEventsObs = new Observable<NonNullable<typeof unsafeWindow.pixe
     if (!unsafeWindow.pixelPlanetEvents) {
         definedSetter = true;
         Object.defineProperty(unsafeWindow, 'pixelPlanetEvents', {
-            set: (v) => {
+            set: (v: typeof unsafeWindow.pixelPlanetEvents) => {
                 definedSetter = false;
                 delete unsafeWindow.pixelPlanetEvents;
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- workaround if events not initialized yet
                 unsafeWindow.pixelPlanetEvents = v;
                 subscriber.next(unsafeWindow.pixelPlanetEvents);
                 subscriber.complete();
@@ -54,10 +53,9 @@ const registerPixelUpdatesObs = new Observable<NonNullable<typeof unsafeWindow.r
     if (!unsafeWindow.registerPixelUpdates) {
         definedSetter = true;
         Object.defineProperty(unsafeWindow, 'registerPixelUpdates', {
-            set: (v) => {
+            set: (v: typeof unsafeWindow.registerPixelUpdates) => {
                 definedSetter = false;
                 delete unsafeWindow.registerPixelUpdates;
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- workaround if events not initialized yet
                 unsafeWindow.registerPixelUpdates = v;
                 subscriber.next(unsafeWindow.registerPixelUpdates);
                 subscriber.complete();
@@ -162,63 +160,67 @@ export const pixelUpdateObs = pixelUpdateSharedObs.pipe(
     }))
 );
 
-const templateLoaderSignal = createSignalState(unsafeWindow.templateLoader, (s) => {
-    let definedSetter = false;
-    if (!unsafeWindow.templateLoader) {
-        definedSetter = true;
-        Object.defineProperty(unsafeWindow, 'templateLoader', {
-            set: (v) => {
-                definedSetter = false;
-                delete unsafeWindow.templateLoader;
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- workaround if objects not initialized yet
-                unsafeWindow.templateLoader = v;
-                s.set(unsafeWindow.templateLoader);
-            },
-            configurable: true,
-        });
+const templateLoaderObs = new Observable<NonNullable<typeof unsafeWindow.templateLoader>>((subscriber) => {
+    if (unsafeWindow.templateLoader) {
+        subscriber.next(unsafeWindow.templateLoader);
+        subscriber.complete();
         return;
     }
 
-    queueMicrotask(() => {
-        if (!s.get()) {
-            s.set(unsafeWindow.templateLoader);
-        }
+    let definedSetter = true;
+    Object.defineProperty(unsafeWindow, 'templateLoader', {
+        set: (v: typeof unsafeWindow.templateLoader) => {
+            definedSetter = false;
+            delete unsafeWindow.templateLoader;
+            unsafeWindow.templateLoader = v;
+            subscriber.next(unsafeWindow.templateLoader);
+            subscriber.complete();
+        },
+        configurable: true,
     });
-
     return () => {
         if (definedSetter) {
             delete unsafeWindow.templateLoader;
         }
     };
-});
+}).pipe(shareReplay({ bufferSize: 1, refCount: true }));
 
-const templateLoaderReadySignal = createSignalComputedNested(() => {
-    const templateLoader = templateLoaderSignal.get();
-    if (!templateLoader) return;
-    if (templateLoader.ready) return templateLoader;
-    let definedSetter = false;
-    return createSignalState<typeof templateLoader | undefined>(undefined, (s) => {
-        Object.defineProperty(templateLoader, 'ready', {
-            set: (v) => {
-                definedSetter = false;
-                // @ts-expect-error remove our created Object.defineProperty
-                delete templateLoader.ready;
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- workaround if objects not initialized yet
-                templateLoader.ready = v;
-                s.set(templateLoader);
-            },
-            configurable: true,
-        });
+const templateLoaderReadyObs = templateLoaderObs
+    .pipe(
+        switchMap(
+            (templateLoader) =>
+                new Observable<typeof templateLoader>((subscriber) => {
+                    if (templateLoader.ready) {
+                        subscriber.next(templateLoader);
+                        subscriber.complete();
+                        return;
+                    }
 
-        return () => {
-            if (definedSetter) {
-                // @ts-expect-error remove our created Object.defineProperty
-                delete templateLoader.ready;
-                templateLoader.ready = false;
-            }
-        };
-    });
-});
+                    let definedSetter = true;
+                    Object.defineProperty(templateLoader, 'ready', {
+                        get: () => false,
+                        set: (v: boolean) => {
+                            definedSetter = false;
+                            // @ts-expect-error remove our created Object.defineProperty
+                            delete templateLoader.ready;
+                            templateLoader.ready = v;
+                            subscriber.next(templateLoader);
+                            subscriber.complete();
+                        },
+                        configurable: true,
+                    });
+
+                    return () => {
+                        if (definedSetter) {
+                            // @ts-expect-error remove our created Object.defineProperty
+                            delete templateLoader.ready;
+                            templateLoader.ready = false;
+                        }
+                    };
+                })
+        )
+    )
+    .pipe(shareReplay({ bufferSize: 1, refCount: true }));
 
 function getViewCenterFromUrl(hash: string) {
     // "#d,0,0,15"
