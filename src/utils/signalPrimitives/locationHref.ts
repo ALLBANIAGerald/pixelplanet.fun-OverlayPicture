@@ -1,7 +1,8 @@
 import { unsafeWindow } from 'vite-plugin-monkey/dist/client';
-import { Observable, share } from 'rxjs';
+import { Observable, shareReplay } from 'rxjs';
 
 export const locationHrefObs = new Observable<URL>((subscriber) => {
+    subscriber.next(new URL(location.href));
     const sendNext = () => {
         subscriber.next(new URL(location.href));
     };
@@ -29,4 +30,4 @@ export const locationHrefObs = new Observable<URL>((subscriber) => {
         unsafeWindow.history.replaceState = originalReplaceState;
         unsafeWindow.addEventListener('popstate', handlePopState);
     };
-}).pipe(share());
+}).pipe(shareReplay({ bufferSize: 1, refCount: true }));
