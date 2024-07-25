@@ -1,11 +1,12 @@
 import { createSignalComputedNested } from './signalPrimitives/createSignalComputedNested';
 import { createSignalComputed, createSignalState } from './signalPrimitives/createSignal';
 import { signalToObs } from '../store/obsToSignal';
-import { distinctUntilChanged, map, Observable, reduce, shareReplay, switchMap } from 'rxjs';
+import { distinctUntilChanged, filter, map, Observable, shareReplay, switchMap } from 'rxjs';
 
 interface Store<StoreState> {
     subscribe: (callback: () => void) => () => void;
     getState: () => StoreState;
+    dispatch: (action: { type: string }) => void;
 }
 
 function isStoreFromRedux(store: any) {
@@ -174,13 +175,18 @@ export function setViewCoordinates(view: [number, number]) {
     };
 }
 
-export const pageReduxStateObs = signalToObs(pageReduxStoreSignal).pipe(
+const pageReduxStoreObs = signalToObs(pageReduxStoreSignal).pipe(
+    filter((x) => x.type === 'success'),
+    map((x) => x.store),
+    shareReplay({ bufferSize: 1, refCount: true })
+);
+export const pageReduxStateObs = pageReduxStoreObs.pipe(
     switchMap(
         (store) =>
             new Observable<PageState>((subscriber) => {
-                if (store.type !== 'success') return;
-                const unsub = store.store.subscribe(() => {
-                    subscriber.next(store.store.getState());
+                subscriber.next(store.getState());
+                const unsub = store.subscribe(() => {
+                    subscriber.next(store.getState());
                 });
                 return () => {
                     unsub();
@@ -215,6 +221,22 @@ export const stateCanvasIdObs = pageReduxStateObs.pipe(
     map((state) => state.canvas.canvasId),
     distinctUntilChanged()
 );
+
+type StoreActionType =
+    | {
+          type: 's/SET_O_OPACITY';
+          opacity: number;
+      }
+    | {
+          type: 's/TGL_OVENABLED';
+      };
+
+export function dispatch(action: StoreActionType) {
+    const unsub = pageReduxStoreObs.subscribe((store) => {
+        store.dispatch(action);
+        unsub.unsubscribe();
+    });
+}
 
 const latestStateSignal = createSignalComputedNested(() => {
     const store = pageReduxStoreSignal.get();

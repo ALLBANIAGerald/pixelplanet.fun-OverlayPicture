@@ -18,6 +18,7 @@ import { useSignal } from '../../store/useSignal';
 import { dragModeEnabled, isAutoSelectColorActiveSignal, isOverlayEnabledSignal, isShowSmallPixelsActiveSignal, overlayTransparencySignal, showBigModal } from '../../store/slices/overlaySlice';
 import { OverlayThumbnailImageButton } from './overlayThumbnailImage';
 import { createDropzone } from '../../hooks/createDropzone';
+import { dispatch } from '../../utils/getPageReduxStore';
 
 // const makeStyles = createMakeStyles({ useTheme });
 // const useStyles = makeStyles.makeStyles<{ isMinimized: boolean }>()((theme, props) => {
@@ -160,7 +161,7 @@ const BigModal = () => {
                                     max="100"
                                     value={transparency()}
                                     oninput={(e) => {
-                                        overlayTransparencySignal.set(e.target.valueAsNumber);
+                                        dispatch({ type: 's/SET_O_OPACITY', opacity: e.target.valueAsNumber });
                                     }}
                                     class="tw-range"
                                 />
