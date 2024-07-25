@@ -206,6 +206,15 @@ export const templatesIdsObs = templatesObs.pipe(
     distinctUntilChanged((prev, curr) => prev.symmetricDifference(curr).size === 0),
     shareReplay({ bufferSize: 1, refCount: true })
 );
+export const stateCanvasesObs = pageReduxStateObs.pipe(
+    map((x) => x.canvas.canvases),
+    distinctUntilChanged()
+);
+
+export const stateCanvasIdObs = pageReduxStateObs.pipe(
+    map((state) => state.canvas.canvasId),
+    distinctUntilChanged()
+);
 
 const latestStateSignal = createSignalComputedNested(() => {
     const store = pageReduxStoreSignal.get();

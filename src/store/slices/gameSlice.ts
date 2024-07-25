@@ -1,7 +1,7 @@
-import { PageState, selectPageStateCanvases, selectPageStateCanvasId, selectPageStateCanvasPalette, selectPageStateCanvasReservedColors } from '../../utils/getPageReduxStore';
+import { PageState, selectPageStateCanvasPalette, selectPageStateCanvasReservedColors, stateCanvasesObs, stateCanvasIdObs } from '../../utils/getPageReduxStore';
 import { unsafeWindow } from 'vite-plugin-monkey/dist/client';
 import { createSignalComputed } from '../../utils/signalPrimitives/createSignal';
-import { combineLatestWith, distinctUntilChanged, filter, fromEvent, map, Observable, raceWith, share, shareReplay, switchMap, take } from 'rxjs';
+import { combineLatestWith, distinctUntilChanged, filter, fromEvent, map, merge, Observable, share, shareReplay, switchMap, take, takeUntil, tap } from 'rxjs';
 import { EventEmitter } from 'events';
 import { obsToSignal, signalToObs } from '../obsToSignal';
 import { locationHrefObs } from '../../utils/signalPrimitives/locationHref';
@@ -88,18 +88,31 @@ function createPixelPlanetEventObservable<Key extends keyof PixelPlanetEventType
         map((v) => v as PixelPlanetEventTypes[Key][0])
     );
 }
+const locationHashObs = locationHrefObs.pipe(map((hrefUrl) => hrefUrl.hash));
 
-export const viewCenterObs = createPixelPlanetEventObservable('setviewcoordinates').pipe(
+function getViewCenterFromUrl(hash: string) {
+    // "#d,0,0,15"
+    const splitStr = decodeURIComponent(hash).substring(1).split(',');
+    // TODO ignore 3D
+    const x = splitStr[1] == null ? undefined : parseInt(splitStr[1]);
+    const y = splitStr[2] == null ? undefined : parseInt(splitStr[2]);
+    if (x == null || isNaN(x) || y == null || isNaN(y)) return { x: 0, y: 0 }; // default to 0,0
+    return {
+        x,
+        y,
+    };
+}
+const viewCenterFromUrlObs = locationHashObs.pipe(
+    map((hash) => getViewCenterFromUrl(hash)),
+    distinctUntilChanged()
+);
+const viewCenterFromEventObs = createPixelPlanetEventObservable('setviewcoordinates').pipe(
     map((value) => ({
         x: value[0],
         y: value[1],
-    })),
-    shareReplay({ bufferSize: 1, refCount: true })
+    }))
 );
-export const viewScaleObs = createPixelPlanetEventObservable('setscale').pipe(
-    map((value) => value),
-    shareReplay({ bufferSize: 1, refCount: true })
-);
+export const viewCenterObs = merge(viewCenterFromUrlObs.pipe(takeUntil(viewCenterFromEventObs)), viewCenterFromEventObs);
 
 function getViewScaleFromUrl(hash: string) {
     // "#d,0,0,15"
@@ -110,12 +123,15 @@ function getViewScaleFromUrl(hash: string) {
     z = 2 ** (z / 10);
     return z;
 }
-const locationHashObs = locationHrefObs.pipe(map((hrefUrl) => hrefUrl.hash));
-const viewScaleLocationFallbackObs = locationHashObs.pipe(
+const viewScaleFromUrlObs = locationHashObs.pipe(
     map((hash) => getViewScaleFromUrl(hash)),
     distinctUntilChanged()
 );
-const viewScaleLocationFallbackSignal = obsToSignal(viewScaleLocationFallbackObs, () => getViewScaleFromUrl(location.hash));
+
+const viewScaleFromEventObs = createPixelPlanetEventObservable('setscale');
+export const viewScaleObs = merge(viewScaleFromUrlObs.pipe(takeUntil(viewScaleFromEventObs)), viewScaleFromEventObs).pipe(shareReplay({ bufferSize: 1, refCount: true }));
+
+const viewScaleLocationFallbackSignal = obsToSignal(viewScaleFromUrlObs, () => getViewScaleFromUrl(location.hash));
 const viewScaleEventSignal = obsToSignal(viewScaleObs);
 export const viewScaleSignal = createSignalComputed(() => {
     const eventValue = viewScaleEventSignal.get();
@@ -130,25 +146,21 @@ function getCanvasIdentFromUrl(hash: string) {
 }
 const canvasIdentFromUrlObs = locationHashObs.pipe(
     map(getCanvasIdentFromUrl),
-    filter((i) => i !== undefined)
+    filter((i) => i !== undefined),
+    distinctUntilChanged()
 );
-const pageStateCanvasesObs = signalToObs(selectPageStateCanvases).pipe(filter((x) => x !== undefined));
 const canvasIdFromUrlObs = canvasIdentFromUrlObs.pipe(
     switchMap((ident) =>
-        pageStateCanvasesObs.pipe(
+        stateCanvasesObs.pipe(
             map((can) => Object.entries(can).find(([, c]) => c.ident === ident)?.[0]),
             filter((x) => x !== undefined)
         )
     )
 );
-const fallbackCanvasIdObs = signalToObs(selectPageStateCanvasId).pipe(
-    filter((c) => c !== undefined),
-    take(1)
-);
-export const currentCanvasIdObs = createPixelPlanetEventObservable('selectcanvas').pipe(
-    raceWith(canvasIdFromUrlObs.pipe(take(1)), fallbackCanvasIdObs),
-    shareReplay({ bufferSize: 1, refCount: true })
-);
+const fallbackCanvasIdObs = stateCanvasIdObs.pipe(take(1));
+const canvasIdEventObs = createPixelPlanetEventObservable('selectcanvas');
+export const currentCanvasIdObs = merge(merge(canvasIdFromUrlObs, fallbackCanvasIdObs).pipe(takeUntil(canvasIdEventObs)), canvasIdEventObs).pipe(shareReplay({ bufferSize: 1, refCount: true }));
+
 export const viewHoverObs = createPixelPlanetEventObservable('sethover').pipe(
     map((value) => ({
         x: value[0],
@@ -251,21 +263,7 @@ export const templateLoaderReadyObs = templateLoaderObs
     )
     .pipe(shareReplay({ bufferSize: 1, refCount: true }));
 
-function getViewCenterFromUrl(hash: string) {
-    // "#d,0,0,15"
-    const splitStr = decodeURIComponent(hash).substring(1).split(',');
-    // TODO ignore 3D
-    const x = splitStr[1] == null ? undefined : parseInt(splitStr[1]);
-    const y = splitStr[2] == null ? undefined : parseInt(splitStr[2]);
-    if (x == null || isNaN(x) || y == null || isNaN(y)) return { x: 0, y: 0 }; // default to 0,0
-    return {
-        x,
-        y,
-    };
-}
-
-const viewCenterLocationFallbackObs = locationHashObs.pipe(map((hash) => getViewCenterFromUrl(hash)));
-const viewCenterLocationFallbackSignal = obsToSignal(viewCenterLocationFallbackObs, () => getViewCenterFromUrl(location.hash));
+const viewCenterLocationFallbackSignal = obsToSignal(viewCenterFromUrlObs, () => getViewCenterFromUrl(location.hash));
 const viewCenterEventSignal = obsToSignal(viewCenterObs);
 export const viewCenterSignal = createSignalComputed(() => {
     const eventValue = viewCenterEventSignal.get();
