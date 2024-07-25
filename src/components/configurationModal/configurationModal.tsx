@@ -91,77 +91,6 @@ function OverlayImageEditRow() {
     );
 }
 
-function AddOverlayImageModal() {
-    let ref: HTMLDialogElement;
-    onMount(() => {
-        ref.showModal();
-    });
-
-    const [files, setFiles] = createSignal<File[]>([]);
-    const [urlInput, setUrlInput] = createSignal('');
-
-    return (
-        <dialog ref={(d) => (ref = d)} class="tw-modal">
-            <div class="tw-modal-box">
-                <h2 class="tw-mb-2 tw-text-center tw-text-2xl tw-font-semibold">Add overlay images</h2>
-                <div>{/* TODO, list of files and url, display vertical items list */}</div>
-                <Show when={files().length === 0 && urlInput().length === 0}>
-                    <form>
-                        <div class="tw-mb-4">
-                            <div class="tw-form-control tw-mt-4 tw-w-full">
-                                <label class="tw-label">
-                                    <span class="tw-label-text tw-text-base-content">Url</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    onchange={(e) => {
-                                        setUrlInput(e.target.value);
-                                    }}
-                                    placeholder="https://imgur.com/someimage"
-                                    class="tw-input tw-input-bordered tw-w-full"
-                                    value={urlInput()}
-                                />
-                            </div>
-                            <div class="tw-form-control tw-mt-4 tw-w-full">
-                                <label class="tw-label">
-                                    <span class="tw-label-text tw-text-base-content">File</span>
-                                </label>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    onchange={(e) => {
-                                        setFiles(Array.from(e.target.files ?? []));
-                                    }}
-                                    class="tw-file-input tw-w-full tw-max-w-xs"
-                                />
-                            </div>
-                        </div>
-                        <p class="tw-mt-8 tw-text-center tw-text-error"></p>
-                    </form>
-                </Show>
-
-                <div class="tw-flex tw-justify-end">
-                    <button type="submit" class="mt-2 tw-btn tw-btn-primary">
-                        Add
-                    </button>
-                </div>
-
-                <h3 class="tw-text-lg tw-font-bold">Hello!</h3>
-                <p class="tw-py-4">Press ESC key or click outside to close</p>
-                <div class="tw-modal-action">
-                    <form method="dialog">
-                        <button class="tw-btn tw-btn-primary">Add</button>
-                        <button class="tw-btn">Close</button>
-                    </form>
-                </div>
-            </div>
-            <form method="dialog" class="tw-modal-backdrop">
-                <button class="tw-cursor-default">close</button>
-            </form>
-        </dialog>
-    );
-}
-
 const BigModal = () => {
     const isOverlayEnabled = useSignal(isOverlayEnabledSignal);
     const transparency = useSignal(overlayTransparencySignal);
@@ -181,7 +110,6 @@ const BigModal = () => {
     return (
         <>
             <div>
-                <AddOverlayImageModal />
                 <div
                     ref={dropzone.setRef}
                     classList={{
