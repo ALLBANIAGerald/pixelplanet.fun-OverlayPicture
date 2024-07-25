@@ -1,4 +1,4 @@
-import { PageState, selectPageStateCanvasId, selectPageStateCanvasPalette, selectPageStateCanvasReservedColors } from '../../utils/getPageReduxStore';
+import { PageState, selectPageStateCanvases, selectPageStateCanvasId, selectPageStateCanvasPalette, selectPageStateCanvasReservedColors } from '../../utils/getPageReduxStore';
 import { unsafeWindow } from 'vite-plugin-monkey/dist/client';
 import { createSignalComputed } from '../../utils/signalPrimitives/createSignal';
 import { combineLatestWith, distinctUntilChanged, filter, fromEvent, map, Observable, raceWith, share, shareReplay, switchMap, take } from 'rxjs';
@@ -111,7 +111,10 @@ function getViewScaleFromUrl(hash: string) {
     return z;
 }
 const locationHashObs = locationHrefObs.pipe(map((hrefUrl) => hrefUrl.hash));
-const viewScaleLocationFallbackObs = locationHashObs.pipe(map((hash) => getViewScaleFromUrl(hash)));
+const viewScaleLocationFallbackObs = locationHashObs.pipe(
+    map((hash) => getViewScaleFromUrl(hash)),
+    distinctUntilChanged()
+);
 const viewScaleLocationFallbackSignal = obsToSignal(viewScaleLocationFallbackObs, () => getViewScaleFromUrl(location.hash));
 const viewScaleEventSignal = obsToSignal(viewScaleObs);
 export const viewScaleSignal = createSignalComputed(() => {
@@ -119,15 +122,31 @@ export const viewScaleSignal = createSignalComputed(() => {
     if (!eventValue) return viewScaleLocationFallbackSignal.get();
     return eventValue;
 });
-
+function getCanvasIdentFromUrl(hash: string) {
+    // "#d,0,0,15"
+    const splitStr = decodeURIComponent(hash).substring(1).split(',');
+    // TODO ignore 3D
+    return splitStr[0];
+}
+const canvasIdentFromUrlObs = locationHashObs.pipe(
+    map(getCanvasIdentFromUrl),
+    filter((i) => i !== undefined)
+);
+const pageStateCanvasesObs = signalToObs(selectPageStateCanvases).pipe(filter((x) => x !== undefined));
+const canvasIdFromUrlObs = canvasIdentFromUrlObs.pipe(
+    switchMap((ident) =>
+        pageStateCanvasesObs.pipe(
+            map((can) => Object.entries(can).find(([, c]) => c.ident === ident)?.[0]),
+            filter((x) => x !== undefined)
+        )
+    )
+);
 const fallbackCanvasIdObs = signalToObs(selectPageStateCanvasId).pipe(
     filter((c) => c !== undefined),
     take(1)
 );
 export const currentCanvasIdObs = createPixelPlanetEventObservable('selectcanvas').pipe(
-    // TODO add fallback from URL
-    raceWith(fallbackCanvasIdObs),
-    switchMap((c) => c),
+    raceWith(canvasIdFromUrlObs.pipe(take(1)), fallbackCanvasIdObs),
     shareReplay({ bufferSize: 1, refCount: true })
 );
 export const viewHoverObs = createPixelPlanetEventObservable('sethover').pipe(

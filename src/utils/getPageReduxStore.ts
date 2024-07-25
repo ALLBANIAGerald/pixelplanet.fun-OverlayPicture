@@ -268,6 +268,11 @@ export const selectPageStateCanvasReservedColors = createSignalComputed(() => {
     return state?.canvas.clrIgnore ?? 0;
 });
 
+export const selectPageStateCanvases = createSignalComputed(() => {
+    const state = latestStateSignal.get();
+    return state?.canvas.canvases;
+});
+
 export const selectPageStateCanvasId = createSignalComputed(() => {
     const state = latestStateSignal.get();
     return state?.canvas.canvasId;
