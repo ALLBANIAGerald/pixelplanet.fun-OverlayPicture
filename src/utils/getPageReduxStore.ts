@@ -1,7 +1,7 @@
 import { createSignalComputedNested } from './signalPrimitives/createSignalComputedNested';
 import { createSignalComputed, createSignalState } from './signalPrimitives/createSignal';
 import { signalToObs } from '../store/obsToSignal';
-import { distinctUntilChanged, filter, map, Observable, shareReplay, switchMap } from 'rxjs';
+import { distinctUntilChanged, filter, map, Observable, shareReplay, Subject, switchMap, take, tap } from 'rxjs';
 
 interface Store<StoreState> {
     subscribe: (callback: () => void) => () => void;
@@ -231,11 +231,22 @@ type StoreActionType =
           type: 's/TGL_OVENABLED';
       };
 
+const dispatchSubject = new Subject<StoreActionType>();
+dispatchSubject
+    .pipe(
+        switchMap((action) =>
+            pageReduxStoreObs.pipe(
+                take(1),
+                tap((store) => {
+                    store.dispatch(action);
+                })
+            )
+        )
+    )
+    .subscribe();
+
 export function dispatch(action: StoreActionType) {
-    const unsub = pageReduxStoreObs.subscribe((store) => {
-        store.dispatch(action);
-        unsub.unsubscribe();
-    });
+    dispatchSubject.next(action);
 }
 
 const latestStateSignal = createSignalComputedNested(() => {
