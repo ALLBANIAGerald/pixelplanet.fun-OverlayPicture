@@ -1,7 +1,7 @@
 import { PageState, selectPageStateCanvasPalette, selectPageStateCanvasReservedColors, stateCanvasesObs, stateCanvasIdObs } from '../../utils/getPageReduxStore';
 import { unsafeWindow } from 'vite-plugin-monkey/dist/client';
 import { createSignalComputed } from '../../utils/signalPrimitives/createSignal';
-import { combineLatestWith, distinctUntilChanged, filter, fromEvent, map, merge, Observable, share, shareReplay, switchMap, take, takeUntil, tap } from 'rxjs';
+import { combineLatestWith, distinctUntilChanged, filter, fromEvent, map, mergeWith, Observable, share, shareReplay, switchMap, take, takeUntil } from 'rxjs';
 import { EventEmitter } from 'events';
 import { obsToSignal, signalToObs } from '../obsToSignal';
 import { locationHrefObs } from '../../utils/signalPrimitives/locationHref';
@@ -112,7 +112,7 @@ const viewCenterFromEventObs = createPixelPlanetEventObservable('setviewcoordina
         y: value[1],
     }))
 );
-export const viewCenterObs = merge(viewCenterFromUrlObs.pipe(takeUntil(viewCenterFromEventObs)), viewCenterFromEventObs);
+export const viewCenterObs = viewCenterFromUrlObs.pipe(takeUntil(viewCenterFromEventObs), mergeWith(viewCenterFromEventObs));
 
 function getViewScaleFromUrl(hash: string) {
     // "#d,0,0,15"
@@ -129,7 +129,7 @@ const viewScaleFromUrlObs = locationHashObs.pipe(
 );
 
 const viewScaleFromEventObs = createPixelPlanetEventObservable('setscale');
-export const viewScaleObs = merge(viewScaleFromUrlObs.pipe(takeUntil(viewScaleFromEventObs)), viewScaleFromEventObs).pipe(shareReplay({ bufferSize: 1, refCount: true }));
+export const viewScaleObs = viewScaleFromUrlObs.pipe(takeUntil(viewScaleFromEventObs), mergeWith(viewScaleFromEventObs)).pipe(shareReplay({ bufferSize: 1, refCount: true }));
 
 const viewScaleLocationFallbackSignal = obsToSignal(viewScaleFromUrlObs, () => getViewScaleFromUrl(location.hash));
 const viewScaleEventSignal = obsToSignal(viewScaleObs);
@@ -159,7 +159,7 @@ const canvasIdFromUrlObs = canvasIdentFromUrlObs.pipe(
 );
 const fallbackCanvasIdObs = stateCanvasIdObs.pipe(take(1));
 const canvasIdEventObs = createPixelPlanetEventObservable('selectcanvas');
-export const currentCanvasIdObs = merge(merge(canvasIdFromUrlObs, fallbackCanvasIdObs).pipe(takeUntil(canvasIdEventObs)), canvasIdEventObs).pipe(shareReplay({ bufferSize: 1, refCount: true }));
+export const currentCanvasIdObs = canvasIdFromUrlObs.pipe(mergeWith(fallbackCanvasIdObs), takeUntil(canvasIdEventObs), mergeWith(canvasIdEventObs), shareReplay({ bufferSize: 1, refCount: true }));
 
 export const viewHoverObs = createPixelPlanetEventObservable('sethover').pipe(
     map((value) => ({
