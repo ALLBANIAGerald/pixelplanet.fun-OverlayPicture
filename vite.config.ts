@@ -20,7 +20,7 @@ export default defineConfig((configEnv) => ({
                 version: pkg.version,
                 description: pkg.description,
                 author: pkg.author,
-                match: ['https://pixelplanet.fun/*', 'https://fuckyouarkeros.fun/*', 'https://github.com/Woyken/pixelplanet.fun-OverlayPicture/*'],
+                match: ['https://pixelplanet.fun/*', 'https://fuckyouarkeros.fun/*', 'https://pixuniverse.fun/*', 'https://github.com/Woyken/pixelplanet.fun-OverlayPicture/*'],
                 connect: '*',
                 downloadURL: 'https://woyken.github.io/pixelplanet.fun-OverlayPicture/pixelPlanetOverlay-loader.user.js',
                 updateURL: 'https://woyken.github.io/pixelplanet.fun-OverlayPicture/pixelPlanetOverlay-loader.user.js',
