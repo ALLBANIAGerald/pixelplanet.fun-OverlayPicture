@@ -20,14 +20,16 @@ export const locationHrefObs = new Observable<URL>((subscriber) => {
         sendNext();
     };
 
-    const handlePopState = () => {
+    const handleUrlChange = () => {
         sendNext();
     };
-    unsafeWindow.addEventListener('popstate', handlePopState);
+    unsafeWindow.addEventListener('popstate', handleUrlChange);
+    unsafeWindow.addEventListener('hashchange', handleUrlChange);
 
     return () => {
         unsafeWindow.history.pushState = originalPushState;
         unsafeWindow.history.replaceState = originalReplaceState;
-        unsafeWindow.addEventListener('popstate', handlePopState);
+        unsafeWindow.removeEventListener('popstate', handleUrlChange);
+        unsafeWindow.removeEventListener('hashchange', handleUrlChange);
     };
 }).pipe(shareReplay({ bufferSize: 1, refCount: true }));
