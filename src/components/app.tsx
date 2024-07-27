@@ -1,8 +1,7 @@
-import { useSignal } from '../store/useSignal';
-import { isOverlayEnabledSignal } from '../store/slices/overlaySlice';
 import { OverlayImages } from './overlayImage/overlayImage';
-import { createEffect, Show } from 'solid-js';
+import { createEffect, from, Show } from 'solid-js';
 import { ConfigurationModal } from './configurationModal/configurationModal';
+import { isTemplateEnabledObs } from '../utils/getPageReduxStore';
 
 // function useWebSocketEvents() {
 //     const dispatch = useAppDispatch();
@@ -10,10 +9,6 @@ import { ConfigurationModal } from './configurationModal/configurationModal';
 // }
 
 function useGlobalKeyShortcuts() {
-    const isOverlayEnabled = useSignal(isOverlayEnabledSignal);
-    const handleToggleOverlay = () => {
-        isOverlayEnabledSignal[1](!isOverlayEnabled);
-    };
     createEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
             const { target } = event;
@@ -33,16 +28,6 @@ function useGlobalKeyShortcuts() {
                     return;
                 }
             }
-
-            switch (event.key) {
-                case 'o': {
-                    event.stopImmediatePropagation();
-                    handleToggleOverlay();
-                    break;
-                }
-                default:
-                    break;
-            }
         };
         window.addEventListener('keydown', handleKeyDown);
 
@@ -56,7 +41,7 @@ const App = () => {
     useGlobalKeyShortcuts();
     // useWebSocketEvents();
 
-    const isOverlayEnabled = useSignal(isOverlayEnabledSignal);
+    const isOverlayEnabled = from(isTemplateEnabledObs);
 
     // const [isPageLoaded, setIsPageLoaded] = createSignal(false);
 

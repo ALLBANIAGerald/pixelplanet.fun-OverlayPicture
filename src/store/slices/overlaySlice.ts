@@ -99,7 +99,6 @@ export interface OverlayImage {
 // TODO edit button will mark current one as "current", it's details will be loaded into current edit modal, and changes will be applied to that image
 
 const signalsStorage = localforage.createInstance({ name: 'picture_overlay', storeName: 'signals' });
-export const isOverlayEnabledSignal = persistedSignal(true, 'isOverlayEnabled', (o) => o.overlayEnabled);
 export const overlayImagesSignal = persistedSignal<OverlayImage[]>([], 'overlayImages', (o) => {
     const saved = o.savedConfigs.map<OverlayImage>((x, index) => ({
         canvasId: '0',

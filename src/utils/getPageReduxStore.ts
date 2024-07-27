@@ -221,6 +221,14 @@ export const stateCanvasIdObs = pageReduxStateObs.pipe(
     map((state) => state.canvas.canvasId),
     distinctUntilChanged()
 );
+export const isTemplateEnabledObs = pageReduxStateObs.pipe(
+    map((state) => state.templates.ovEnabled),
+    distinctUntilChanged()
+);
+export const templateOpacityObs = pageReduxStateObs.pipe(
+    map((state) => state.templates.oOpacity),
+    distinctUntilChanged()
+);
 
 type StoreActionType =
     | {
@@ -361,7 +369,7 @@ export interface PageState {
         available: true;
         list: { canvasId: string; enabled: boolean; height: number; imageId: number; title: string; width: number; x: number; y: number }[];
         mEnabled: false;
-        oOpacity: 40;
+        oOpacity: number;
         oSmallPxls: true;
         ovEnabled: false;
     };

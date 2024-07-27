@@ -13,12 +13,12 @@
 // import { useAppDispatch } from '../../store/hooks';
 // import ConfigDropDown from '../configDropDown/configDropDown';
 // import OverlayConfig from '../overlayConfig/overlayConfig';
-import { createSignal, Match, onMount, Show, Switch } from 'solid-js';
+import { createSignal, from, Match, Show, Switch } from 'solid-js';
 import { useSignal } from '../../store/useSignal';
-import { dragModeEnabled, isAutoSelectColorActiveSignal, isOverlayEnabledSignal, isShowSmallPixelsActiveSignal, overlayTransparencySignal, showBigModal } from '../../store/slices/overlaySlice';
+import { dragModeEnabled, isAutoSelectColorActiveSignal, isShowSmallPixelsActiveSignal, showBigModal } from '../../store/slices/overlaySlice';
 import { OverlayThumbnailImageButton } from './overlayThumbnailImage';
 import { createDropzone } from '../../hooks/createDropzone';
-import { dispatch } from '../../utils/getPageReduxStore';
+import { dispatch, isTemplateEnabledObs, templateOpacityObs } from '../../utils/getPageReduxStore';
 
 // const makeStyles = createMakeStyles({ useTheme });
 // const useStyles = makeStyles.makeStyles<{ isMinimized: boolean }>()((theme, props) => {
@@ -93,8 +93,8 @@ function OverlayImageEditRow() {
 }
 
 const BigModal = () => {
-    const isOverlayEnabled = useSignal(isOverlayEnabledSignal);
-    const transparency = useSignal(overlayTransparencySignal);
+    const isOverlayEnabled = from(isTemplateEnabledObs);
+    const transparency = from(templateOpacityObs);
     const autoSelectColor = useSignal(isAutoSelectColorActiveSignal);
     const [open, setOpen] = createSignal(false);
     const [editMode, setEditMode] = createSignal<'auto' | 'select on map' | 'manual'>('auto');
@@ -122,10 +122,10 @@ const BigModal = () => {
                         <input
                             type="checkbox"
                             class="tw-toggle tw-toggle-success"
-                            onchange={(e) => {
-                                isOverlayEnabledSignal[1](e.target.checked);
+                            onchange={() => {
+                                dispatch({ type: 's/TGL_OVENABLED' });
                             }}
-                            checked={isOverlayEnabled()}
+                            checked={isOverlayEnabled() ?? false}
                         />
                         <div class="tw-flex tw-flex-1 tw-items-center tw-justify-center tw-@container">
                             <h3 class="tw-m-0 tw-hidden tw-text-center tw-text-lg tw-font-bold @[9rem]:tw-block">Picture Overlay</h3>
@@ -159,7 +159,7 @@ const BigModal = () => {
                                     type="range"
                                     min="0"
                                     max="100"
-                                    value={transparency()}
+                                    value={transparency() ?? 80}
                                     oninput={(e) => {
                                         dispatch({ type: 's/SET_O_OPACITY', opacity: e.target.valueAsNumber });
                                     }}
