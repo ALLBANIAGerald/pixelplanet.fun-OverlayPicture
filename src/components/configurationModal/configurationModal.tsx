@@ -15,10 +15,10 @@
 // import OverlayConfig from '../overlayConfig/overlayConfig';
 import { createSignal, from, Match, Show, Switch } from 'solid-js';
 import { useSignal } from '../../store/useSignal';
-import { dragModeEnabled, isAutoSelectColorActiveSignal, isShowSmallPixelsActiveSignal, showBigModal } from '../../store/slices/overlaySlice';
+import { dragModeEnabled, isAutoSelectColorActiveSignal, showBigModal } from '../../store/slices/overlaySlice';
 import { OverlayThumbnailImageButton } from './overlayThumbnailImage';
 import { createDropzone } from '../../hooks/createDropzone';
-import { dispatch, isTemplateEnabledObs, templateOpacityObs } from '../../utils/getPageReduxStore';
+import { dispatch, isTemplateEnabledObs, templateOpacityObs, templateSmallPixelsObs } from '../../utils/getPageReduxStore';
 
 // const makeStyles = createMakeStyles({ useTheme });
 // const useStyles = makeStyles.makeStyles<{ isMinimized: boolean }>()((theme, props) => {
@@ -99,7 +99,7 @@ const BigModal = () => {
     const [open, setOpen] = createSignal(false);
     const [editMode, setEditMode] = createSignal<'auto' | 'select on map' | 'manual'>('auto');
     const dragMode = useSignal(dragModeEnabled);
-    const smallPixels = useSignal(isShowSmallPixelsActiveSignal);
+    const smallPixels = from(templateSmallPixelsObs);
 
     const dropzone = createDropzone({
         accepts: 'image/*',
@@ -215,7 +215,7 @@ const BigModal = () => {
                                 'tw-btn-primary': smallPixels(),
                             }}
                             onclick={() => {
-                                isShowSmallPixelsActiveSignal.set(!isShowSmallPixelsActiveSignal.get());
+                                dispatch({ type: 's/TGL_SMALLPXLS' });
                             }}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 960" fill="currentColor">

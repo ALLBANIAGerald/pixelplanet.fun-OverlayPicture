@@ -1,8 +1,8 @@
 import { useSignal } from '../../store/useSignal';
-import { selectPageStateCanvasId, selectPageStateCanvasPalette, templateByIdObs } from '../../utils/getPageReduxStore';
+import { selectPageStateCanvasId, templateByIdObs } from '../../utils/getPageReduxStore';
 import { templateLoaderReadyObs, templatesIdsInViewObs, viewCenterSignal, viewportSizeSignal, viewScaleSignal } from '../../store/slices/gameSlice';
-import { isShowSmallPixelsActiveSignal, OverlayImage, overlayTransparencySignal, dragModeEnabled } from '../../store/slices/overlaySlice';
-import { Accessor, createEffect, createMemo, createRenderEffect, createSignal, For, from, Match, onCleanup, Show, Switch, untrack } from 'solid-js';
+import { OverlayImage, dragModeEnabled } from '../../store/slices/overlaySlice';
+import { Accessor, createEffect, createMemo, createSignal, For, from, onCleanup, Show, untrack } from 'solid-js';
 import { gameCoordsToScreen, screenToGameCoords } from '../../utils/coordConversion';
 import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
 import { GM_xmlhttpRequest } from 'vite-plugin-monkey/dist/client';

@@ -229,6 +229,10 @@ export const templateOpacityObs = pageReduxStateObs.pipe(
     map((state) => state.templates.oOpacity),
     distinctUntilChanged()
 );
+export const templateSmallPixelsObs = pageReduxStateObs.pipe(
+    map((state) => state.templates.oSmallPxls),
+    distinctUntilChanged()
+);
 
 type StoreActionType =
     | {
@@ -237,6 +241,9 @@ type StoreActionType =
       }
     | {
           type: 's/TGL_OVENABLED';
+      }
+    | {
+          type: 's/TGL_SMALLPXLS';
       };
 
 const dispatchSubject = new Subject<StoreActionType>();

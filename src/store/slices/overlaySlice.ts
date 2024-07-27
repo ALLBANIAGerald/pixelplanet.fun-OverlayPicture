@@ -161,7 +161,6 @@ export const overlayImagesSignal = persistedSignal<OverlayImage[]>([], 'overlayI
 export const overlayTransparencySignal = new Signal.State(90);
 export const isFollowMouseActiveSignal = new Signal.State(false);
 export const isAutoSelectColorActiveSignal = new Signal.State(false);
-export const isShowSmallPixelsActiveSignal = new Signal.State(true);
 
 export type StoredSignal<T> = [() => T, (newValue: T) => void];
 
