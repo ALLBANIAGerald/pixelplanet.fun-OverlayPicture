@@ -2,7 +2,7 @@ import { useSignal } from '../../store/useSignal';
 import { selectPageStateCanvasId, selectPageStateCanvasPalette, templateByIdObs } from '../../utils/getPageReduxStore';
 import { templateLoaderReadyObs, templatesIdsInViewObs, viewCenterSignal, viewportSizeSignal, viewScaleSignal } from '../../store/slices/gameSlice';
 import { isShowSmallPixelsActiveSignal, OverlayImage, overlayTransparencySignal, dragModeEnabled } from '../../store/slices/overlaySlice';
-import { Accessor, createMemo, createRenderEffect, createSignal, For, from, Match, onCleanup, Show, Switch } from 'solid-js';
+import { Accessor, createEffect, createMemo, createRenderEffect, createSignal, For, from, Match, onCleanup, Show, Switch, untrack } from 'solid-js';
 import { gameCoordsToScreen, screenToGameCoords } from '../../utils/coordConversion';
 import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
 import { GM_xmlhttpRequest } from 'vite-plugin-monkey/dist/client';
@@ -175,7 +175,15 @@ function OverlayImageWithControls(props: { template: { imageId: number; x: numbe
     const viewPortSize = useSignal(viewportSizeSignal);
     const viewCenterGameCoords = useSignal(viewCenterSignal);
     const viewScale = useSignal(viewScaleSignal);
-    const screenOffset = createMemo(() => gameCoordsToScreen({ x: props.template.x, y: props.template.y }, viewPortSize(), viewCenterGameCoords(), viewScale()));
+    const [dragStartCoords, setDragStartCoords] = createSignal<{ x: number; y: number } | undefined>(undefined);
+    createEffect(() => {
+        if (draggable.isActiveDraggable) untrack(() => setDragStartCoords(props.template));
+    });
+    const gameCoords = createMemo(() => {
+        if (draggable.isActiveDraggable) return dragStartCoords() ?? { x: props.template.x, y: props.template.y };
+        return { x: props.template.x, y: props.template.y };
+    });
+    const screenOffset = createMemo(() => gameCoordsToScreen(gameCoords(), viewPortSize(), viewCenterGameCoords(), viewScale()));
     const dragMode = useSignal(dragModeEnabled);
 
     return (
@@ -228,20 +236,13 @@ function useMoveImageTo() {
 export function OverlayImages() {
     const imageIds = from(templatesIdsInViewObs);
     const moveImageTo = useMoveImageTo();
-    const movedToById = new Map<number, { screenX: number; screenY: number }>();
     const dragMode = useSignal(dragModeEnabled);
     return (
         <div id="overlay-images-wrapper" class="tw-h-0 tw-w-0">
             <DragDropProvider
                 onDragMove={(e) => {
-                    movedToById.set(typeof e.draggable.id === 'string' ? parseInt(e.draggable.id) : e.draggable.id, { screenX: e.draggable.transformed.x, screenY: e.draggable.transformed.y });
-                }}
-                onDragEnd={(e) => {
                     const id = typeof e.draggable.id === 'string' ? parseInt(e.draggable.id) : e.draggable.id;
-                    const movedTo = movedToById.get(id);
-                    if (!movedTo) return;
-                    moveImageTo(id, movedTo.screenX, movedTo.screenY);
-                    movedToById.delete(id);
+                    moveImageTo(id, e.draggable.transformed.x, e.draggable.transformed.y);
                 }}
             >
                 <Show when={dragMode()}>
