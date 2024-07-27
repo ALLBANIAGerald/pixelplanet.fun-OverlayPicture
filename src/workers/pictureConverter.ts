@@ -11,33 +11,6 @@ export const pictureConverter = {
         return true;
     },
 
-    applySmallPixelsModifier(imageData: ImageData) {
-        const smallPixelsMultiplier = 3;
-        const smallPixelsImageData = new ImageData(imageData.width * smallPixelsMultiplier, imageData.height * smallPixelsMultiplier);
-        for (let outY = 0; outY < imageData.height; outY++) {
-            for (let outX = 0; outX < imageData.width; outX++) {
-                // eslint-disable-next-line no-bitwise
-                const outIdx = (imageData.width * outY + outX) << 2;
-
-                const outR = imageData.data[outIdx + 0] ?? 0;
-                const outG = imageData.data[outIdx + 1] ?? 0;
-                const outB = imageData.data[outIdx + 2] ?? 0;
-                const outA = imageData.data[outIdx + 3] ?? 0;
-
-                const smallX = outX * smallPixelsMultiplier + Math.floor(smallPixelsMultiplier / 2);
-                const smallY = outY * smallPixelsMultiplier + Math.floor(smallPixelsMultiplier / 2);
-                // eslint-disable-next-line no-bitwise
-                const smallIdx = (smallY * smallPixelsImageData.width + smallX) << 2;
-
-                smallPixelsImageData.data[smallIdx + 0] = outR;
-                smallPixelsImageData.data[smallIdx + 1] = outG;
-                smallPixelsImageData.data[smallIdx + 2] = outB;
-                smallPixelsImageData.data[smallIdx + 3] = outA;
-            }
-        }
-        return smallPixelsImageData;
-    },
-
     async applyModificationsToImageData(colorPalette: [number, number, number][], imageData: ImageData, modifierConvertColors: boolean, brightenBy: number) {
         return new Promise<ImageData>((resolve) => {
             const outImageData = new ImageData(imageData.width, imageData.height);
