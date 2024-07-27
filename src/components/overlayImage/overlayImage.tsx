@@ -169,7 +169,7 @@ function useProcessImageDataModifications(
     }));
 }
 
-function OverlayImageWithControls(props: { template: { imageId: number; x: number; y: number } }) {
+function OverlayImageWithControls(props: { template: { imageId: number; x: number; y: number; height: number; width: number } }) {
     const draggable = createDraggable(props.template.imageId);
 
     const viewPortSize = useSignal(viewportSizeSignal);
@@ -185,7 +185,20 @@ function OverlayImageWithControls(props: { template: { imageId: number; x: numbe
     });
     const screenOffset = createMemo(() => gameCoordsToScreen(gameCoords(), viewPortSize(), viewCenterGameCoords(), viewScale()));
     const dragMode = useSignal(dragModeEnabled);
-
+    const dragButtonCoordsRelativeToImage = createMemo(() => {
+        const centerGame = viewCenterGameCoords();
+        const leftGame = props.template.x;
+        const topGame = props.template.y;
+        const rightGame = props.template.x + props.template.width;
+        const bottomGame = props.template.y + props.template.height;
+        let x = centerGame.x < leftGame ? leftGame : centerGame.x;
+        x = x > rightGame ? rightGame : x;
+        let y = centerGame.y < topGame ? topGame : centerGame.y;
+        y = y > bottomGame ? bottomGame : y;
+        const imageOnScreen = screenOffset();
+        const buttonOnScreen = gameCoordsToScreen({ x, y }, viewPortSize(), viewCenterGameCoords(), viewScale());
+        return { x: buttonOnScreen.clientX - imageOnScreen.clientX, y: buttonOnScreen.clientY - imageOnScreen.clientY };
+    });
     return (
         <div
             ref={draggable.ref}
@@ -202,7 +215,10 @@ function OverlayImageWithControls(props: { template: { imageId: number; x: numbe
         >
             <div class="tw-pointer-events-none"></div>
             <Show when={dragMode()}>
-                <button class="tw-btn tw-btn-primary tw-absolute -tw-left-6 -tw-top-6 tw-h-12 tw-w-12 tw-p-0">
+                <button
+                    class="tw-btn tw-btn-primary tw-absolute -tw-left-6 -tw-top-6 tw-h-12 tw-w-12 tw-p-0"
+                    style={{ left: `${dragButtonCoordsRelativeToImage().x.toString()}px`, top: `${dragButtonCoordsRelativeToImage().y.toString()}px` }}
+                >
                     <svg xmlns="http://www.w3.org/2000/svg" class="tw-h-6 tw-w-6" viewBox="0 -960 960 960" fill="currentColor">
                         <path d="M480-80 310-250l57-57 73 73v-206H235l73 72-58 58L80-480l169-169 57 57-72 72h206v-206l-73 73-57-57 170-170 170 170-57 57-73-73v206h205l-73-72 58-58 170 170-170 170-57-57 73-73H520v205l72-73 58 58L480-80Z" />
                     </svg>
