@@ -8,7 +8,7 @@ import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
 import { templateLoaderReadyObs, templatesIdsInViewObs, viewCenterSignal, viewScaleSignal } from './gameSlice';
 import { gameCoordsToScreen, screenToGameCoords } from '../../utils/coordConversion';
 import { createSignalComputed, createSignalState } from '../../utils/signalPrimitives/createSignal';
-import { combineLatestWith, filter, forkJoin, from, map, mergeMap, of, switchMap, tap } from 'rxjs';
+import { combineLatestWith, concatMap, distinctUntilChanged, filter, forkJoin, from, lastValueFrom, map, mergeMap, ObservedValueOf, of, Subject, switchMap, tap } from 'rxjs';
 import { pictureConverterApi } from '../../pictureConversionApi';
 import { signalToObs } from '../obsToSignal';
 
@@ -302,7 +302,8 @@ function getTemplateImageDataWithModificationsApplied$(id: number) {
 function getTemplateById$(id: number) {
     return templateByIdObs.pipe(
         map((templateById) => templateById.get(id)),
-        filter((x) => x !== undefined)
+        filter((x) => x !== undefined),
+        distinctUntilChanged((prev, curr) => JSON.stringify(prev) === JSON.stringify(curr))
     );
 }
 
@@ -316,7 +317,8 @@ function getTemplateCanvas$(id: number) {
 function getTemplateByTitle$(title: string) {
     return templateByIdObs.pipe(
         map((x) => Array.from(x.values()).find((x) => x.title === title)),
-        filter((x) => x !== undefined)
+        filter((x) => x !== undefined),
+        distinctUntilChanged()
     );
 }
 
@@ -342,68 +344,135 @@ function canvasToBlob(canvas: HTMLCanvasElement) {
     });
 }
 
-// TODO when shouldConvertColors is switched, enabled or disable `template` vs `modifiedTemplate`
-function getProcessedTemplateWithModifications(id: number) {
-    return templateModificationMapping$.pipe(
-        map((mapping) => mapping.get(id)),
-        switchMap((newId) => {
-            if (newId === undefined) {
-                // Create new `modified template from target template`
-                return getTemplateById$(id).pipe(
-                    combineLatestWith(getTemplateCanvas$(id).pipe(switchMap((canvas) => from(canvasToBlob(canvas))))),
-                    map(([template, blob]) => [template, new File([blob], `${template.title}-modified-${template.imageId.toString()}`)] as const),
-                    combineLatestWith(templateLoaderReadyObs),
-                    mergeMap(([[template, file], loader]) => {
-                        const title = `${template.title}-modified-${template.imageId.toString()}`;
-                        console.log('creating new', title);
-                        return from(loader.addFile(file, title, template.canvasId, template.x, template.y)).pipe(map(() => title));
-                    }),
-                    mergeMap((title) => {
-                        return getTemplateByTitle$(title);
-                    }),
-                    tap((x) => {
-                        const values = new Map(templateModificationMapping[0]());
-                        values.set(id, x.imageId);
-                        templateModificationMapping[1](values);
-                    }),
-                    combineLatestWith(templateLoaderReadyObs, getTemplateById$(id)),
-                    tap(([x, loader, template]) => {
-                        loader.changeTemplate(template.title, { enabled: false });
-                    }),
-                    map(([x]) => x.imageId)
-                );
-            }
-            return of(newId);
-        }),
-        combineLatestWith(
-            getTemplateImageDataWithModificationsApplied$(id).pipe(
-                switchMap((x) => {
-                    const c = document.createElement('canvas');
-                    c.width = x.width;
-                    c.height = x.height;
-                    const ctx = c.getContext('2d');
-                    ctx?.putImageData(x, 0, 0);
-                    return from(canvasToBlob(c));
-                }),
-                map((blob) => new File([blob], `modified-image`))
-            ),
-            templateLoaderReadyObs
-        ),
-        switchMap(([newId, imageFile, loader]) => from(loader.updateFile(newId, imageFile)).pipe(map(() => [id, newId] as const)))
-    );
-}
-
-const templatesWithModifications$ = templatesIdsInViewObs.pipe(
-    combineLatestWith(templateModificationMapping$),
-    switchMap(([ids, mapping]) =>
-        forkJoin(
-            Array.from(ids.values())
-                .filter((x) => !Array.from(mapping.values()).find((v) => v === x))
-                .map((x) => getProcessedTemplateWithModifications(x))
-        )
+const templatesAndModifiedIds$ = templateByIdObs.pipe(
+    map((x) => Array.from(x.values())),
+    map((template) =>
+        template.map((x) => {
+            const matches = x.title.match(/-modified-imageoverlay-(\d+)$/);
+            if (!matches || matches[1] === undefined) return { id: x.imageId };
+            return { id: x.imageId, originalId: parseInt(matches[1]) };
+        })
     )
 );
 
+const modifiedTemplates$ = templatesAndModifiedIds$.pipe(
+    map((ids) => ids.filter((x) => x.originalId !== undefined)),
+    distinctUntilChanged((prev, curr) => new Set(prev).symmetricDifference(new Set(curr)).size === 0)
+);
+const visibleModifiedTemplateIds$ = templatesIdsInViewObs.pipe(
+    combineLatestWith(modifiedTemplates$),
+    map(([ids, modIds]) =>
+        Array.from(ids.values())
+            .map((x) => modIds.find((m) => m.id === x))
+            .filter((x) => x !== undefined)
+    ),
+    distinctUntilChanged((prev, curr) => new Set(prev).symmetricDifference(new Set(curr)).size === 0)
+);
+const originalTemplates$ = templatesAndModifiedIds$.pipe(map((ids) => ids.filter((x) => x.originalId === undefined).map((x) => x.id)));
+const visibleOriginalTemplateIds$ = templatesIdsInViewObs.pipe(
+    combineLatestWith(originalTemplates$),
+    map(([ids, origIds]) => Array.from(ids.values()).filter((x) => origIds.find((o) => o === x))),
+    distinctUntilChanged((prev, curr) => new Set(prev).symmetricDifference(new Set(curr)).size === 0)
+);
+
+async function addNewTemplate(file: File, loader: ObservedValueOf<typeof templateLoaderReadyObs>, title: string, canvasId: string, x: number, y: number) {
+    await loader.addFile(file, title, canvasId, x, y);
+    const template = await lastValueFrom(getTemplateByTitle$(title));
+}
+
+// TODO when shouldConvertColors is switched, enabled or disable `template` vs `modifiedTemplate`
+function getProcessedTemplateWithModifications(id: number) {
+    return getTemplateById$(id)
+        .pipe(
+            filter((x) => x.enabled),
+            combineLatestWith(modifiedTemplates$),
+            filter(([a, b]) => !b.find((x) => x.originalId === a.imageId)),
+            map(([x]) => x),
+            combineLatestWith(getTemplateCanvas$(id).pipe(switchMap((canvas) => from(canvasToBlob(canvas))))),
+            map(([template, blob]) => [template, new File([blob], `${template.title}-modified-${template.imageId.toString()}`)] as const),
+            combineLatestWith(templateLoaderReadyObs)
+        )
+        .pipe(
+            switchMap(([[template, file], loader]) => {
+                const title = `${template.title}-modified-imageoverlay-${template.imageId.toString()}`;
+                return from(loader.addFile(file, title, template.canvasId, template.x, template.y)).pipe(map(() => title));
+            }),
+            switchMap((title) => {
+                return getTemplateByTitle$(title);
+            }),
+            tap((x) => {
+                const values = new Map(templateModificationMapping[0]());
+                values.set(id, x.imageId);
+                templateModificationMapping[1](values);
+            }),
+            combineLatestWith(templateLoaderReadyObs, getTemplateById$(id)),
+            tap(([x, loader, template]) => {
+                loader.changeTemplate(template.title, { enabled: false });
+            }),
+            map(([x]) => x.imageId)
+        );
+
+    // return templateModificationMapping$.pipe(
+    //     map((mapping) => mapping.get(id)),
+    //     switchMap((newId) => {
+    //         if (newId === undefined) {
+    //             // Create new `modified template from target template`
+    //             return
+    //         }
+    //         return of(newId);
+    //     }),
+    //     combineLatestWith(
+    //         getTemplateImageDataWithModificationsApplied$(id).pipe(
+    //             switchMap((x) => {
+    //                 const c = document.createElement('canvas');
+    //                 c.width = x.width;
+    //                 c.height = x.height;
+    //                 const ctx = c.getContext('2d');
+    //                 ctx?.putImageData(x, 0, 0);
+    //                 return from(canvasToBlob(c));
+    //             }),
+    //             map((blob) => new File([blob], `modified-image`))
+    //         ),
+    //         templateLoaderReadyObs
+    //     ),
+    //     switchMap(([newId, imageFile, loader]) => from(loader.updateFile(newId, imageFile)).pipe(map(() => [id, newId] as const)))
+    // );
+}
+
+const templatesWithModifications$ = visibleOriginalTemplateIds$.pipe(
+    combineLatestWith(modifiedTemplates$),
+    map(([ids, modifiedIds]) => ids.filter((x) => !modifiedIds.find((m) => m.originalId === x))),
+    distinctUntilChanged((prev, curr) => new Set(prev).symmetricDifference(new Set(curr)).size === 0),
+    concatMap((ids) => forkJoin(ids.map((x) => getProcessedTemplateWithModifications(x))))
+);
 templatesWithModifications$.subscribe((...args) => {
     console.log('templatesWithModifications$', ...args);
 });
+
+const applyModifications$ = visibleModifiedTemplateIds$.pipe(
+    concatMap((ids) =>
+        forkJoin(
+            ids.map((id) =>
+                getTemplateImageDataWithModificationsApplied$(id.originalId).pipe(
+                    tap((x) => console.log('tap1', x)),
+                    switchMap((x) => {
+                        const c = document.createElement('canvas');
+                        c.width = x.width;
+                        c.height = x.height;
+                        const ctx = c.getContext('2d');
+                        ctx?.putImageData(x, 0, 0);
+                        return from(canvasToBlob(c));
+                    }),
+                    map((blob) => new File([blob], `modified-image`)),
+                    combineLatestWith(templateLoaderReadyObs),
+                    switchMap(([imageFile, loader]) => from(loader.updateFile(id.id, imageFile)).pipe(map(() => [id] as const)))
+                )
+            )
+        )
+    )
+);
+applyModifications$.subscribe((x) => console.log('applyModifications$', x));
+
+const createModifiedTemplateFromIdSubject = new Subject<number>();
+
+createModifiedTemplateFromIdSubject.pipe(concatMap((x) => ''));
