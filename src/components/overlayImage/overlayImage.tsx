@@ -160,9 +160,9 @@ function useProcessImageDataModifications(
 ) {
     const canvasId = useSignal(selectPageStateCanvasId);
     return createQuery(() => ({
-        queryKey: ['overlayImage', overlayImageId(), 'useProcessImageDataModifications', canvasId(), palette(), modifierShouldConvertColors(), modifierImageBrightness()],
+        queryKey: ['overlayImage', overlayImageId(), 'useProcessImageDataModifications', canvasId(), palette(), modifierImageBrightness()],
         queryFn: () => {
-            return pictureConverterApi.applyModificationsToImageData(palette(), inputImageData(), modifierShouldConvertColors(), modifierImageBrightness());
+            return pictureConverterApi.applyModificationsToImageData(palette(), inputImageData(), modifierImageBrightness());
         },
         staleTime: Infinity,
         gcTime: 30 * 1000,

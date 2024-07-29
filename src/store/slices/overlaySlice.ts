@@ -2,13 +2,16 @@ import logger from '../../handlers/logger';
 import localforage from 'localforage';
 import { Signal } from 'signal-polyfill';
 import { getStoredValue } from '../../store/getStoredData';
-import { selectPageStateCanvasId } from '../../utils/getPageReduxStore';
+import { selectPageStateCanvasId, templateByIdObs, templatesIdsObs } from '../../utils/getPageReduxStore';
 import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
 
-import { viewCenterSignal, viewScaleSignal } from './gameSlice';
+import { templateLoaderReadyObs, viewCenterSignal, viewScaleSignal } from './gameSlice';
 import { gameCoordsToScreen, screenToGameCoords } from '../../utils/coordConversion';
 import { createSignalComputed, createSignalState } from '../../utils/signalPrimitives/createSignal';
 import { produce } from 'immer';
+import { combineLatestWith, filter, from, map, switchMap, take } from 'rxjs';
+import { pictureConverterApi } from '../../pictureConversionApi';
+import { signalToObs } from '../obsToSignal';
 
 interface OverlayImageInputState {
     url?: string;
@@ -276,3 +279,22 @@ export const overlayImagesIdsSortedDistanceToViewCenter = createSignalComputed(
 export const showBigModal = createSignalState(true);
 
 export const dragModeEnabled = createSignalState(false);
+
+export const templateModificationMapping = persistedSignal(new Map<number, number>(), 'templateModificationMapping');
+export const templateModificationSettings = persistedSignal(new Map<number, { convertColors: boolean; imageBrightness: number }>(), 'templateModificationSettings');
+
+const templateModificationSettingsObs = signalToObs(templateModificationSettings);
+function getTemplateModificationObs(id: number) {
+    return templatesIdsObs.pipe(
+        filter((x) => x.has(id)),
+        switchMap(() => templateByIdObs.pipe(map((templateById) => templateById.get(id)))),
+        filter((x) => x !== undefined),
+        combineLatestWith(templateLoaderReadyObs),
+        switchMap(([template, templateLoader]) => from(templateLoader.getTemplate(id)).pipe(map((canvas) => [template, canvas] as const))),
+        filter(([, canvas]) => canvas != null),
+        map(([template, canvas]) => canvas?.getContext('2d')?.getImageData(0, 0, template.width, template.height, { colorSpace: 'srgb' })),
+        combineLatestWith(templateModificationSettingsObs),
+        map((x) => [x[0], x[1].get(id)] as const),
+        switchMap((x) => from(pictureConverterApi.applyModificationsToImageData()))
+    );
+}
