@@ -1,6 +1,6 @@
 import { createSignalComputedNested } from './signalPrimitives/createSignalComputedNested';
 import { createSignalComputed, createSignalState } from './signalPrimitives/createSignal';
-import { signalToObs } from '../store/obsToSignal';
+import { obsToSignal, signalToObs } from '../store/obsToSignal';
 import { distinctUntilChanged, filter, map, Observable, shareReplay, Subject, switchMap, take, tap } from 'rxjs';
 
 interface Store<StoreState> {
@@ -234,6 +234,21 @@ export const templateSmallPixelsObs = pageReduxStateObs.pipe(
     distinctUntilChanged()
 );
 
+export const stateCanvasPaletteObs = pageReduxStateObs.pipe(
+    map((state) => {
+        return Array.from(new Uint32Array(state.canvas.palette.abgr)).map<[number, number, number]>((abgr) => {
+            // eslint-disable-next-line no-bitwise
+            const b = (abgr & 0x00ff0000) >>> 16;
+            // eslint-disable-next-line no-bitwise
+            const g = (abgr & 0x0000ff00) >>> 8;
+            // eslint-disable-next-line no-bitwise
+            const r = abgr & 0x000000ff;
+            return [r, g, b];
+        });
+    }),
+    distinctUntilChanged()
+);
+
 type StoreActionType =
     | {
           type: 's/SET_O_OPACITY';
@@ -306,19 +321,7 @@ export const selectPageStateRoundedCanvasViewCenter = createSignalComputed(() =>
     return { x: Math.round(view.x), y: Math.round(view.y) };
 });
 
-export const selectPageStateCanvasPalette = createSignalComputed(() => {
-    const state = latestStateSignal.get();
-    const paletteAbgr = state?.canvas.palette.abgr ?? [];
-    return Array.from(new Uint32Array(paletteAbgr)).map<[number, number, number]>((abgr) => {
-        // eslint-disable-next-line no-bitwise
-        const b = (abgr & 0x00ff0000) >>> 16;
-        // eslint-disable-next-line no-bitwise
-        const g = (abgr & 0x0000ff00) >>> 8;
-        // eslint-disable-next-line no-bitwise
-        const r = abgr & 0x000000ff;
-        return [r, g, b];
-    });
-});
+export const selectPageStateCanvasPalette = obsToSignal(stateCanvasPaletteObs);
 
 export const selectPageStateCanvasReservedColors = createSignalComputed(() => {
     const state = latestStateSignal.get();

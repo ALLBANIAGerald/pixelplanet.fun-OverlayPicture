@@ -2,14 +2,14 @@ import logger from '../../handlers/logger';
 import localforage from 'localforage';
 import { Signal } from 'signal-polyfill';
 import { getStoredValue } from '../../store/getStoredData';
-import { selectPageStateCanvasId, templateByIdObs, templatesIdsObs } from '../../utils/getPageReduxStore';
+import { stateCanvasPaletteObs, selectPageStateCanvasId, selectPageStateCanvasPalette, templateByIdObs, templatesIdsObs } from '../../utils/getPageReduxStore';
 import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
 
 import { templateLoaderReadyObs, viewCenterSignal, viewScaleSignal } from './gameSlice';
 import { gameCoordsToScreen, screenToGameCoords } from '../../utils/coordConversion';
 import { createSignalComputed, createSignalState } from '../../utils/signalPrimitives/createSignal';
 import { produce } from 'immer';
-import { combineLatestWith, filter, from, map, switchMap, take } from 'rxjs';
+import { combineLatestWith, filter, from, map, of, switchMap, take } from 'rxjs';
 import { pictureConverterApi } from '../../pictureConversionApi';
 import { signalToObs } from '../obsToSignal';
 
@@ -284,17 +284,100 @@ export const templateModificationMapping = persistedSignal(new Map<number, numbe
 export const templateModificationSettings = persistedSignal(new Map<number, { convertColors: boolean; imageBrightness: number }>(), 'templateModificationSettings');
 
 const templateModificationSettingsObs = signalToObs(templateModificationSettings);
-function getTemplateModificationObs(id: number) {
+
+export function getTemplateImageDataWithModificationsApplied$(id: number) {
     return templatesIdsObs.pipe(
         filter((x) => x.has(id)),
-        switchMap(() => templateByIdObs.pipe(map((templateById) => templateById.get(id)))),
-        filter((x) => x !== undefined),
-        combineLatestWith(templateLoaderReadyObs),
-        switchMap(([template, templateLoader]) => from(templateLoader.getTemplate(id)).pipe(map((canvas) => [template, canvas] as const))),
-        filter(([, canvas]) => canvas != null),
-        map(([template, canvas]) => canvas?.getContext('2d')?.getImageData(0, 0, template.width, template.height, { colorSpace: 'srgb' })),
-        combineLatestWith(templateModificationSettingsObs),
-        map((x) => [x[0], x[1].get(id)] as const),
-        switchMap((x) => from(pictureConverterApi.applyModificationsToImageData()))
+        switchMap(() =>
+            templateModificationSettingsObs.pipe(
+                map((x) => x.get(id)),
+                filter((x) => x !== undefined),
+                filter((x) => x.convertColors)
+            )
+        ),
+        combineLatestWith(getTemplateImageData$(id), stateCanvasPaletteObs),
+        switchMap(([modificationSettings, imageData, palette]) => from(pictureConverterApi.applyModificationsToImageData(palette, imageData, modificationSettings.imageBrightness)))
+    );
+}
+
+function getTemplateById(id: number) {
+    return templateByIdObs.pipe(
+        map((templateById) => templateById.get(id)),
+        filter((x) => x !== undefined)
+    );
+}
+
+function getTemplateCanvas$(id: number) {
+    return templateLoaderReadyObs.pipe(
+        switchMap((templateLoader) => from(templateLoader.getTemplate(id))),
+        filter((x) => x !== null)
+    );
+}
+
+function getTemplateByTitle$(title: string) {
+    return templateByIdObs.pipe(
+        map((x) => Array.from(x.values()).find((x) => x.title === title)),
+        filter((x) => x !== undefined)
+    );
+}
+
+function getTemplateImageData$(id: number) {
+    return getTemplateById(id).pipe(
+        combineLatestWith(getTemplateCanvas$(id)),
+        map(([template, canvas]) => canvas.getContext('2d')?.getImageData(0, 0, template.width, template.height, { colorSpace: 'srgb' })),
+        filter((x) => x !== undefined)
+    );
+}
+
+const templateModificationMapping$ = signalToObs(templateModificationMapping);
+
+function canvasToBlob(canvas: HTMLCanvasElement) {
+    return new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((blob) => {
+            if (blob) {
+                resolve(blob);
+                return;
+            }
+            reject(new Error('blob is null'));
+        });
+    });
+}
+
+// TODO when shouldConvertColors is switched, enabled or disable `template` vs `modifiedTemplate`
+function getProcessedTemplateWithModifications(id: number) {
+    return templateModificationMapping$.pipe(
+        map((mapping) => mapping.get(id)),
+        switchMap((newId) => {
+            if (newId === undefined) {
+                // Create new `modified template from target template`
+                return getTemplateById(id).pipe(
+                    combineLatestWith(getTemplateCanvas$(id).pipe(switchMap((canvas) => from(canvasToBlob(canvas))))),
+                    map(([template, blob]) => [template, new File([blob], `${template.title}-modified-${template.imageId.toString()}`)] as const),
+                    combineLatestWith(templateLoaderReadyObs),
+                    switchMap(([[template, file], loader]) => {
+                        const title = `${template.title}-modified-${template.imageId.toString()}`;
+                        return from(loader.addFile(file, title, template.canvasId, template.x, template.y)).pipe(map(() => title));
+                    }),
+                    switchMap((title) => getTemplateByTitle$(title)),
+                    map((x) => x.imageId)
+                );
+            }
+            return of(newId);
+        }),
+        combineLatestWith(
+            getTemplateImageDataWithModificationsApplied$(id).pipe(
+                switchMap((x) => {
+                    const c = document.createElement('canvas');
+                    c.width = x.width;
+                    c.height = x.height;
+                    const ctx = c.getContext('2d');
+                    ctx?.putImageData(x, 0, 0);
+                    return from(canvasToBlob(c));
+                }),
+                map((blob) => new File([blob], `modified-image`))
+            ),
+            templateLoaderReadyObs
+        ),
+        switchMap(([newId, imageFile, loader]) => from(loader.updateFile(newId, imageFile)).pipe(map(() => newId)))
     );
 }
