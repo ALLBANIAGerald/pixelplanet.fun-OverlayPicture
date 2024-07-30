@@ -8,7 +8,7 @@ import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
 import { templateLoaderReadyObs, templatesIdsInViewObs, viewCenterSignal, viewScaleSignal } from './gameSlice';
 import { gameCoordsToScreen, screenToGameCoords } from '../../utils/coordConversion';
 import { createSignalComputed, createSignalState } from '../../utils/signalPrimitives/createSignal';
-import { combineLatestWith, concatMap, distinctUntilChanged, filter, forkJoin, from, lastValueFrom, map, mergeMap, ObservedValueOf, of, Subject, switchMap, tap } from 'rxjs';
+import { combineLatestWith, concatMap, distinctUntilChanged, filter, forkJoin, from, lastValueFrom, map, mergeMap, ObservedValueOf, of, Subject, switchMap, take, tap } from 'rxjs';
 import { pictureConverterApi } from '../../pictureConversionApi';
 import { signalToObs } from '../obsToSignal';
 
@@ -286,6 +286,7 @@ const templateModificationSettingsObs = signalToObs(templateModificationSettings
 
 function getTemplateImageDataWithModificationsApplied$(id: number) {
     return templatesIdsObs.pipe(
+        take(1),
         filter((x) => x.has(id)),
         switchMap(() =>
             templateModificationSettingsObs.pipe(
@@ -324,6 +325,7 @@ function getTemplateByTitle$(title: string) {
 
 function getTemplateImageData$(id: number) {
     return getTemplateById$(id).pipe(
+        take(1),
         combineLatestWith(getTemplateCanvas$(id)),
         map(([template, canvas]) => canvas.getContext('2d')?.getImageData(0, 0, template.width, template.height, { colorSpace: 'srgb' })),
         filter((x) => x !== undefined)
@@ -381,69 +383,41 @@ async function addNewTemplate(file: File, loader: ObservedValueOf<typeof templat
 }
 
 // TODO when shouldConvertColors is switched, enabled or disable `template` vs `modifiedTemplate`
-function getProcessedTemplateWithModifications(id: number) {
-    return getTemplateById$(id)
-        .pipe(
-            filter((x) => x.enabled),
-            combineLatestWith(modifiedTemplates$),
-            filter(([a, b]) => !b.find((x) => x.originalId === a.imageId)),
-            map(([x]) => x),
-            combineLatestWith(getTemplateCanvas$(id).pipe(switchMap((canvas) => from(canvasToBlob(canvas))))),
-            map(([template, blob]) => [template, new File([blob], `${template.title}-modified-${template.imageId.toString()}`)] as const),
-            combineLatestWith(templateLoaderReadyObs)
-        )
-        .pipe(
-            switchMap(([[template, file], loader]) => {
-                const title = `${template.title}-modified-imageoverlay-${template.imageId.toString()}`;
-                return from(loader.addFile(file, title, template.canvasId, template.x, template.y)).pipe(map(() => title));
-            }),
-            switchMap((title) => {
-                return getTemplateByTitle$(title);
-            }),
-            tap((x) => {
-                const values = new Map(templateModificationMapping[0]());
-                values.set(id, x.imageId);
-                templateModificationMapping[1](values);
-            }),
-            combineLatestWith(templateLoaderReadyObs, getTemplateById$(id)),
-            tap(([x, loader, template]) => {
-                loader.changeTemplate(template.title, { enabled: false });
-            }),
-            map(([x]) => x.imageId)
-        );
-
-    // return templateModificationMapping$.pipe(
-    //     map((mapping) => mapping.get(id)),
-    //     switchMap((newId) => {
-    //         if (newId === undefined) {
-    //             // Create new `modified template from target template`
-    //             return
-    //         }
-    //         return of(newId);
-    //     }),
-    //     combineLatestWith(
-    //         getTemplateImageDataWithModificationsApplied$(id).pipe(
-    //             switchMap((x) => {
-    //                 const c = document.createElement('canvas');
-    //                 c.width = x.width;
-    //                 c.height = x.height;
-    //                 const ctx = c.getContext('2d');
-    //                 ctx?.putImageData(x, 0, 0);
-    //                 return from(canvasToBlob(c));
-    //             }),
-    //             map((blob) => new File([blob], `modified-image`))
-    //         ),
-    //         templateLoaderReadyObs
-    //     ),
-    //     switchMap(([newId, imageFile, loader]) => from(loader.updateFile(newId, imageFile)).pipe(map(() => [id, newId] as const)))
-    // );
+function getProcessedTemplateWithModifications$(id: number) {
+    return getTemplateById$(id).pipe(
+        take(1),
+        combineLatestWith(
+            templateModificationSettingsObs.pipe(
+                map((x) => x.get(id)),
+                filter((x) => x !== undefined),
+                filter((x) => x.convertColors),
+                take(1)
+            )
+        ),
+        filter(([, modificationSettings]) => modificationSettings.convertColors),
+        map(([template]) => template),
+        combineLatestWith(getTemplateCanvas$(id).pipe(switchMap((canvas) => from(canvasToBlob(canvas))))),
+        map(([template, blob]) => [template, new File([blob], `${template.title}-modified-${template.imageId.toString()}`)] as const),
+        combineLatestWith(templateLoaderReadyObs),
+        switchMap(([[ogTemplate, file], loader]) => {
+            const title = `${ogTemplate.title}-modified-imageoverlay-${ogTemplate.imageId.toString()}`;
+            return from(
+                (async () => {
+                    await loader.addFile(file, title, ogTemplate.canvasId, ogTemplate.x, ogTemplate.y);
+                    loader.changeTemplate(ogTemplate.title, { enabled: false });
+                    const newTemplate = await lastValueFrom(getTemplateByTitle$(title));
+                    return newTemplate;
+                })()
+            );
+        })
+    );
 }
 
 const templatesWithModifications$ = visibleOriginalTemplateIds$.pipe(
     combineLatestWith(modifiedTemplates$),
     map(([ids, modifiedIds]) => ids.filter((x) => !modifiedIds.find((m) => m.originalId === x))),
     distinctUntilChanged((prev, curr) => new Set(prev).symmetricDifference(new Set(curr)).size === 0),
-    concatMap((ids) => forkJoin(ids.map((x) => getProcessedTemplateWithModifications(x))))
+    concatMap((ids) => forkJoin(ids.map((x) => getProcessedTemplateWithModifications$(x))))
 );
 templatesWithModifications$.subscribe((...args) => {
     console.log('templatesWithModifications$', ...args);
@@ -454,7 +428,6 @@ const applyModifications$ = visibleModifiedTemplateIds$.pipe(
         forkJoin(
             ids.map((id) =>
                 getTemplateImageDataWithModificationsApplied$(id.originalId).pipe(
-                    tap((x) => console.log('tap1', x)),
                     switchMap((x) => {
                         const c = document.createElement('canvas');
                         c.width = x.width;
@@ -471,8 +444,6 @@ const applyModifications$ = visibleModifiedTemplateIds$.pipe(
         )
     )
 );
-applyModifications$.subscribe((x) => console.log('applyModifications$', x));
-
-const createModifiedTemplateFromIdSubject = new Subject<number>();
-
-createModifiedTemplateFromIdSubject.pipe(concatMap((x) => ''));
+applyModifications$.subscribe((x) => {
+    console.log('applyModifications$', x);
+});
