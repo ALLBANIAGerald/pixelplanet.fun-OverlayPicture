@@ -201,21 +201,20 @@ function OverlayImageWithControls(props: { template: { imageId: number; x: numbe
         return { x: buttonOnScreen.clientX - imageOnScreen.clientX, y: buttonOnScreen.clientY - imageOnScreen.clientY };
     });
     return (
-        <div
-            ref={draggable.ref}
-            class="tw-relative tw-left-[--left-offset] tw-top-[--top-offset] tw-origin-top-left"
-            classList={{
-                'tw-pointer-events-none': !dragMode(),
-            }}
-            style={{
-                ...transformStyle(draggable.transform),
-                '--left-offset': `${screenOffset().clientX.toString()}px`,
-                '--top-offset': `${screenOffset().clientY.toString()}px`,
-            }}
-            {...draggable.dragActivators}
-        >
-            <div class="tw-pointer-events-none"></div>
-            <Show when={dragMode()}>
+        <Show when={dragMode()}>
+            <div
+                ref={draggable.ref}
+                class="tw-relative tw-left-[--left-offset] tw-top-[--top-offset] tw-origin-top-left"
+                classList={{
+                    'tw-pointer-events-none': !dragMode(),
+                }}
+                style={{
+                    ...transformStyle(draggable.transform),
+                    '--left-offset': `${screenOffset().clientX.toString()}px`,
+                    '--top-offset': `${screenOffset().clientY.toString()}px`,
+                }}
+                {...draggable.dragActivators}
+            >
                 <div
                     class="tw-absolute tw-left-[--left-offset] tw-top-[--top-offset] -tw-translate-x-1/2 -tw-translate-y-1/2 tw-transition-[left,top] [transition-timing-function:linear(0.2_0%,1_100%)]"
                     style={{ '--left-offset': `${dragButtonCoordsRelativeToImage().x.toString()}px`, '--top-offset': `${dragButtonCoordsRelativeToImage().y.toString()}px` }}
@@ -226,8 +225,8 @@ function OverlayImageWithControls(props: { template: { imageId: number; x: numbe
                         </svg>
                     </button>
                 </div>
-            </Show>
-        </div>
+            </div>
+        </Show>
     );
 }
 
