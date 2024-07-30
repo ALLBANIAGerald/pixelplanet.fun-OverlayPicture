@@ -202,22 +202,22 @@ function OverlayImageWithControls(props: { template: { imageId: number; x: numbe
     return (
         <div
             ref={draggable.ref}
-            class="tw-relative tw-left-0 tw-top-0 tw-origin-top-left"
+            class="tw-relative tw-left-[--left-offset] tw-top-[--top-offset] tw-origin-top-left"
             classList={{
                 'tw-pointer-events-none': !dragMode(),
             }}
             style={{
                 ...transformStyle(draggable.transform),
-                left: `${screenOffset().clientX.toString()}px`,
-                top: `${screenOffset().clientY.toString()}px`,
+                '--left-offset': `${screenOffset().clientX.toString()}px`,
+                '--top-offset': `${screenOffset().clientY.toString()}px`,
             }}
             {...draggable.dragActivators}
         >
             <div class="tw-pointer-events-none"></div>
             <Show when={dragMode()}>
                 <button
-                    class="tw-btn tw-btn-primary tw-absolute -tw-left-6 -tw-top-6 tw-h-12 tw-w-12 tw-p-0"
-                    style={{ left: `${dragButtonCoordsRelativeToImage().x.toString()}px`, top: `${dragButtonCoordsRelativeToImage().y.toString()}px` }}
+                    class="tw-btn tw-btn-primary tw-absolute tw-left-[--left-offset] tw-top-[--top-offset] tw-h-12 tw-w-12 tw-p-0"
+                    style={{ '--left-offset': `${dragButtonCoordsRelativeToImage().x.toString()}px`, '--top-offset': `${dragButtonCoordsRelativeToImage().y.toString()}px` }}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" class="tw-h-6 tw-w-6" viewBox="0 -960 960 960" fill="currentColor">
                         <path d="M480-80 310-250l57-57 73 73v-206H235l73 72-58 58L80-480l169-169 57 57-72 72h206v-206l-73 73-57-57 170-170 170 170-57 57-73-73v206h205l-73-72 58-58 170 170-170 170-57-57 73-73H520v205l72-73 58 58L480-80Z" />
