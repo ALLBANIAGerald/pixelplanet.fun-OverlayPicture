@@ -187,10 +187,11 @@ function OverlayImageWithControls(props: { template: { imageId: number; x: numbe
     const dragMode = useSignal(dragModeEnabled);
     const dragButtonCoordsRelativeToImage = createMemo(() => {
         const centerGame = viewCenterGameCoords();
-        const leftGame = props.template.x;
-        const topGame = props.template.y;
-        const rightGame = props.template.x + props.template.width;
-        const bottomGame = props.template.y + props.template.height;
+        const gameC = gameCoords();
+        const leftGame = gameC.x;
+        const topGame = gameC.y;
+        const rightGame = gameC.x + props.template.width;
+        const bottomGame = gameC.y + props.template.height;
         let x = centerGame.x < leftGame ? leftGame : centerGame.x;
         x = x > rightGame ? rightGame : x;
         let y = centerGame.y < topGame ? topGame : centerGame.y;
@@ -216,7 +217,7 @@ function OverlayImageWithControls(props: { template: { imageId: number; x: numbe
             <div class="tw-pointer-events-none"></div>
             <Show when={dragMode()}>
                 <button
-                    class="tw-btn tw-btn-primary tw-absolute tw-left-[--left-offset] tw-top-[--top-offset] tw-h-12 tw-w-12 tw-p-0"
+                    class="tw-btn tw-btn-primary tw-absolute tw-left-[--left-offset] tw-top-[--top-offset] tw-h-12 tw-w-12 -tw-translate-x-1/2 -tw-translate-y-1/2 tw-p-0"
                     style={{ '--left-offset': `${dragButtonCoordsRelativeToImage().x.toString()}px`, '--top-offset': `${dragButtonCoordsRelativeToImage().y.toString()}px` }}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" class="tw-h-6 tw-w-6" viewBox="0 -960 960 960" fill="currentColor">
