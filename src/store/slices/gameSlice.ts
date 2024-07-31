@@ -298,9 +298,9 @@ const viewportSizeObs = viewportObs.pipe(
 );
 
 export const templatesIdsInViewObs = templateLoaderReadyObs.pipe(
-    combineLatestWith(currentCanvasIdObs, viewportSizeObs, viewCenterObs),
-    map(([templateLoader, currentCanvasId, viewportSize, viewCenter]) =>
-        templateLoader.getTemplatesInView(currentCanvasId, viewCenter.x, viewCenter.y, viewportSize.width / 2, viewportSize.height / 2)
+    combineLatestWith(currentCanvasIdObs, viewportSizeObs, viewCenterObs, viewScaleObs),
+    map(([templateLoader, currentCanvasId, viewportSize, viewCenter, viewScale]) =>
+        templateLoader.getTemplatesInView(currentCanvasId, viewCenter.x, viewCenter.y, viewportSize.width / 2 / viewScale, viewportSize.height / 2 / viewScale)
     ),
     map((x) => new Set(x.map((t) => t.imageId))),
     distinctUntilChanged((prev, curr) => prev.symmetricDifference(curr).size === 0),
