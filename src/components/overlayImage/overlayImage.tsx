@@ -235,6 +235,7 @@ function OverlayImageWithControls(props: { template: { imageId: number; x: numbe
                                     void loader()?.updateFile(props.template.imageId, file);
                                 }}
                             />
+                            {/* TODO, add "Convert colors", "Image brightness" settings here */}
                         </div>
                     </label>
                 </div>
