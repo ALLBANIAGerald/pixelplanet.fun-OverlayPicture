@@ -9,6 +9,7 @@ import { GM_xmlhttpRequest } from 'vite-plugin-monkey/dist/client';
 import { pictureConverterApi } from '../../pictureConversionApi';
 import { createQuery } from '@tanstack/solid-query';
 import { createDraggable, DragDropProvider, DragDropSensors, transformStyle } from '@thisbeyond/solid-dnd';
+import { viewPortIsMouseDown$ } from '../../gameInjection/viewport';
 
 async function loadUrlToImage(url: string) {
     return new Promise<HTMLImageElement | Error>((resolve) => {
@@ -184,6 +185,7 @@ function OverlayImageWithControls(props: { template: { imageId: number; x: numbe
         return { x: props.template.x, y: props.template.y };
     });
     const screenOffset = createMemo(() => gameCoordsToScreen(gameCoords(), viewPortSize(), viewCenterGameCoords(), viewScale()));
+    const sizeOnScreen = createMemo(() => ({ width: props.template.width * viewScale(), height: props.template.height * viewScale() }));
     const dragMode = useSignal(dragModeEnabled);
     const dragButtonCoordsRelativeToImage = createMemo(() => {
         const centerGame = viewCenterGameCoords();
@@ -200,23 +202,26 @@ function OverlayImageWithControls(props: { template: { imageId: number; x: numbe
         const buttonOnScreen = gameCoordsToScreen({ x, y }, viewPortSize(), viewCenterGameCoords(), viewScale());
         return { x: buttonOnScreen.clientX - imageOnScreen.clientX, y: buttonOnScreen.clientY - imageOnScreen.clientY };
     });
+    const viewPortIsMouseDown = from(viewPortIsMouseDown$);
     return (
         <Show when={dragMode()}>
             <div
                 ref={draggable.ref}
-                class="tw-relative tw-left-[--left-offset] tw-top-[--top-offset] tw-origin-top-left"
-                classList={{
-                    'tw-pointer-events-none': !dragMode(),
-                }}
+                class="tw-pointer-events-none tw-relative tw-left-[--left-offset] tw-top-[--top-offset] tw-h-[--height] tw-w-[--width] tw-origin-top-left"
                 style={{
                     ...transformStyle(draggable.transform),
                     '--left-offset': `${screenOffset().clientX.toString()}px`,
                     '--top-offset': `${screenOffset().clientY.toString()}px`,
+                    '--width': `${sizeOnScreen().width.toString()}px`,
+                    '--height': `${sizeOnScreen().height.toString()}px`,
                 }}
                 {...draggable.dragActivators}
             >
                 <div
                     class="tw-absolute tw-left-[--left-offset] tw-top-[--top-offset] -tw-translate-x-1/2 -tw-translate-y-1/2 tw-transition-[left,top] [transition-timing-function:linear(0.2_0%,1_100%)]"
+                    classList={{
+                        'tw-pointer-events-auto': !viewPortIsMouseDown(),
+                    }}
                     style={{ '--left-offset': `${dragButtonCoordsRelativeToImage().x.toString()}px`, '--top-offset': `${dragButtonCoordsRelativeToImage().y.toString()}px` }}
                 >
                     <button class="tw-btn tw-btn-primary tw-h-12 tw-w-12 tw-p-0">

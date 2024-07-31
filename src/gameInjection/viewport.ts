@@ -2,6 +2,8 @@ import logger from '../handlers/logger';
 import { createSignalComputed, createSignalState } from '../utils/signalPrimitives/createSignal';
 import { documentBody } from '../utils/signalPrimitives/documentBody';
 import { createSignalComputedNested } from '../utils/signalPrimitives/createSignalComputedNested';
+import { signalToObs } from '../store/obsToSignal';
+import { filter, fromEvent, map, mergeWith, shareReplay, switchMap } from 'rxjs';
 
 function isViewportElement(element: HTMLElement): boolean {
     if (element.tagName.toUpperCase() !== 'CANVAS') return false;
@@ -77,6 +79,18 @@ function addViewPortPassiveEventSignal<K extends keyof HTMLElementEventMap>(even
     });
     return viewPortSignalOnTouchStartHookPassiveSignal;
 }
+
+const viewPort$ = signalToObs(viewPortSignal);
+export const viewPortIsMouseDown$ = viewPort$.pipe(
+    filter((x) => x !== undefined),
+    switchMap((viewPort) =>
+        fromEvent(viewPort, 'mousedown').pipe(
+            map(() => true),
+            mergeWith(fromEvent(viewPort, 'mouseup').pipe(map(() => false)))
+        )
+    ),
+    shareReplay({ bufferSize: 1, refCount: true })
+);
 
 export const viewPortSignalOnTouchStartHookPassiveSignal = addViewPortPassiveEventSignal('touchstart');
 export const viewPortSignalOnMouseMoveHookPassiveSignal = addViewPortPassiveEventSignal('mousemove');
