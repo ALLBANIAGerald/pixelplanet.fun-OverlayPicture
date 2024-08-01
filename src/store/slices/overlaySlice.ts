@@ -8,9 +8,10 @@ import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
 import { templateLoaderReadyObs, templatesIdsInViewObs, viewCenterSignal, viewScaleSignal } from './gameSlice';
 import { gameCoordsToScreen, screenToGameCoords } from '../../utils/coordConversion';
 import { createSignalComputed, createSignalState } from '../../utils/signalPrimitives/createSignal';
-import { combineLatestWith, concatMap, distinctUntilChanged, filter, forkJoin, from, lastValueFrom, map, mergeMap, ObservedValueOf, of, Subject, switchMap, take, tap } from 'rxjs';
+import { combineLatestWith, concatMap, distinctUntilChanged, filter, finalize, forkJoin, from, lastValueFrom, map, mergeAll, mergeMap, ObservedValueOf, of, Subject, switchMap, take, tap } from 'rxjs';
 import { pictureConverterApi } from '../../pictureConversionApi';
 import { signalToObs } from '../obsToSignal';
+import { log$, traceLog$ } from '../log$';
 
 interface OverlayImageInputState {
     url?: string;
@@ -280,22 +281,43 @@ export const showBigModal = createSignalState(true);
 export const dragModeEnabled = createSignalState(false);
 
 export const templateModificationMapping = persistedSignal(new Map<number, number>(), 'templateModificationMapping');
-export const templateModificationSettings = persistedSignal(new Map<number, { convertColors: boolean; imageBrightness: number }>(), 'templateModificationSettings');
+const templateModificationSettings = persistedSignal(new Map<number, { convertColors: boolean; imageBrightness: number }>(), 'templateModificationSettings');
+export function updateModificationSettings(templateId: number, settings: { convertColors?: boolean; imageBrightness?: number }) {
+    modifiedTemplates$.pipe(map((m) => m.find((x) => x.id === templateId)?.originalId ?? templateId)).subscribe((targetTemplateId) => {
+        const [get, set] = templateModificationSettings;
+        const prev = get();
+        const prevInstance = prev.get(targetTemplateId);
+        const newConvertColors = settings.convertColors ?? prevInstance?.convertColors ?? false;
+        const newBrightness = settings.imageBrightness ?? prevInstance?.imageBrightness ?? 0;
+        set(new Map(prev).set(targetTemplateId, { convertColors: newConvertColors, imageBrightness: newBrightness }));
+    });
+}
 
-const templateModificationSettingsObs = signalToObs(templateModificationSettings);
+const templateModificationSettings$ = signalToObs(templateModificationSettings);
+export function templateModificationSettingsForId$(templateId: number) {
+    return templateModificationSettings$.pipe(
+        combineLatestWith(modifiedTemplates$.pipe(map((m) => m.find((x) => x.id === templateId)?.originalId ?? templateId))),
+        map(([settingsMap, templateId]) => settingsMap.get(templateId)),
+        filter((x) => x !== undefined),
+        distinctUntilChanged(),
+        traceLog$('templateModificationSettingsForId$ settings')
+    );
+}
 
 function getTemplateImageDataWithModificationsApplied$(id: number) {
     return templatesIdsObs.pipe(
-        take(1),
         filter((x) => x.has(id)),
-        switchMap(() =>
-            templateModificationSettingsObs.pipe(
-                map((x) => x.get(id)),
-                filter((x) => x !== undefined),
-                filter((x) => x.convertColors)
+        traceLog$('getTemplateImageDataWithModificationsApplied$ ids'),
+        concatMap(() =>
+            templateModificationSettingsForId$(id).pipe(
+                traceLog$('getTemplateImageDataWithModificationsApplied$ templateModificationSettingsForId$ settings'),
+                filter((x) => x.convertColors),
+                traceLog$('getTemplateImageDataWithModificationsApplied$ templateModificationSettingsForId$ true')
             )
         ),
+        traceLog$('getTemplateImageDataWithModificationsApplied$ settings'),
         combineLatestWith(getTemplateImageData$(id), stateCanvasPaletteObs),
+        traceLog$('getTemplateImageDataWithModificationsApplied$ canvas'),
         switchMap(([modificationSettings, imageData, palette]) => from(pictureConverterApi.applyModificationsToImageData(palette, imageData, modificationSettings.imageBrightness)))
     );
 }
@@ -359,7 +381,7 @@ const templatesAndModifiedIds$ = templateByIdObs.pipe(
 
 const modifiedTemplates$ = templatesAndModifiedIds$.pipe(
     map((ids) => ids.filter((x) => x.originalId !== undefined)),
-    distinctUntilChanged((prev, curr) => new Set(prev).symmetricDifference(new Set(curr)).size === 0)
+    distinctUntilChanged((prev, curr) => new Set(prev.map((x) => x.id)).symmetricDifference(new Set(curr.map((x) => x.id))).size === 0)
 );
 const visibleModifiedTemplateIds$ = templatesIdsInViewObs.pipe(
     combineLatestWith(modifiedTemplates$),
@@ -384,66 +406,76 @@ async function addNewTemplate(file: File, loader: ObservedValueOf<typeof templat
 
 // TODO when shouldConvertColors is switched, enabled or disable `template` vs `modifiedTemplate`
 function getProcessedTemplateWithModifications$(id: number) {
-    return getTemplateById$(id).pipe(
-        take(1),
-        combineLatestWith(
-            templateModificationSettingsObs.pipe(
-                map((x) => x.get(id)),
-                filter((x) => x !== undefined),
-                filter((x) => x.convertColors),
-                take(1)
-            )
-        ),
-        filter(([, modificationSettings]) => modificationSettings.convertColors),
-        map(([template]) => template),
-        combineLatestWith(getTemplateCanvas$(id).pipe(switchMap((canvas) => from(canvasToBlob(canvas))))),
-        map(([template, blob]) => [template, new File([blob], `${template.title}-modified-${template.imageId.toString()}`)] as const),
-        combineLatestWith(templateLoaderReadyObs),
-        switchMap(([[ogTemplate, file], loader]) => {
-            const title = `${ogTemplate.title}-modified-imageoverlay-${ogTemplate.imageId.toString()}`;
-            return from(
-                (async () => {
-                    await loader.addFile(file, title, ogTemplate.canvasId, ogTemplate.x, ogTemplate.y);
-                    loader.changeTemplate(ogTemplate.title, { enabled: false });
-                    const newTemplate = await lastValueFrom(getTemplateByTitle$(title));
-                    return newTemplate;
-                })()
-            );
-        })
-    );
+    return getTemplateById$(id)
+        .pipe(
+            take(1),
+            traceLog$('getProcessedTemplateWithModifications$ template'),
+            combineLatestWith(templateModificationSettingsForId$(id).pipe(filter((x) => x.convertColors))),
+            traceLog$('getProcessedTemplateWithModifications$ template-convert'),
+            filter(([, modificationSettings]) => modificationSettings.convertColors),
+            map(([template]) => template),
+            take(1),
+            combineLatestWith(getTemplateCanvas$(id).pipe(switchMap((canvas) => from(canvasToBlob(canvas)))))
+        )
+        .pipe(
+            map(([template, blob]) => [template, new File([blob], `${template.title}-modified-${template.imageId.toString()}`)] as const),
+            traceLog$('getProcessedTemplateWithModifications$ new file'),
+            combineLatestWith(templateLoaderReadyObs),
+            traceLog$('getProcessedTemplateWithModifications$ with loader'),
+            switchMap(([[ogTemplate, file], loader]) => {
+                const title = `${ogTemplate.title}-modified-imageoverlay-${ogTemplate.imageId.toString()}`;
+                return from(
+                    (async () => {
+                        await loader.addFile(file, title, ogTemplate.canvasId, ogTemplate.x, ogTemplate.y);
+                        loader.changeTemplate(ogTemplate.title, { enabled: false });
+                        const newTemplate = await lastValueFrom(getTemplateByTitle$(title));
+                        return newTemplate;
+                    })()
+                );
+            }),
+            traceLog$('getProcessedTemplateWithModifications$ result')
+        );
 }
 
 const templatesWithModifications$ = visibleOriginalTemplateIds$.pipe(
     combineLatestWith(modifiedTemplates$),
     map(([ids, modifiedIds]) => ids.filter((x) => !modifiedIds.find((m) => m.originalId === x))),
     distinctUntilChanged((prev, curr) => new Set(prev).symmetricDifference(new Set(curr)).size === 0),
-    concatMap((ids) => forkJoin(ids.map((x) => getProcessedTemplateWithModifications$(x))))
+    traceLog$('templatesWithModifications$ ids'),
+    mergeAll(),
+    traceLog$('templatesWithModifications$ id'),
+    concatMap((id) => getProcessedTemplateWithModifications$(id)),
+    traceLog$('templatesWithModifications$ result')
 );
-templatesWithModifications$.subscribe((...args) => {
-    console.log('templatesWithModifications$', ...args);
-});
+templatesWithModifications$.subscribe();
 
 const applyModifications$ = visibleModifiedTemplateIds$.pipe(
-    concatMap((ids) =>
-        forkJoin(
-            ids.map((id) =>
-                getTemplateImageDataWithModificationsApplied$(id.originalId).pipe(
-                    switchMap((x) => {
-                        const c = document.createElement('canvas');
-                        c.width = x.width;
-                        c.height = x.height;
-                        const ctx = c.getContext('2d');
-                        ctx?.putImageData(x, 0, 0);
-                        return from(canvasToBlob(c));
-                    }),
-                    map((blob) => new File([blob], `modified-image`)),
-                    combineLatestWith(templateLoaderReadyObs),
-                    switchMap(([imageFile, loader]) => from(loader.updateFile(id.id, imageFile)).pipe(map(() => [id] as const)))
-                )
-            )
+    traceLog$('applyModifications$ ids'),
+    mergeAll(),
+    traceLog$('applyModifications$ id'),
+    concatMap((id) =>
+        getTemplateImageDataWithModificationsApplied$(id.originalId).pipe(
+            traceLog$('applyModifications$ imagedata'),
+            switchMap((x) => {
+                const c = document.createElement('canvas');
+                c.width = x.width;
+                c.height = x.height;
+                const ctx = c.getContext('2d');
+                ctx?.putImageData(x, 0, 0);
+                return from(canvasToBlob(c));
+            }),
+            map((blob) => new File([blob], `modified-image`)),
+            combineLatestWith(templateLoaderReadyObs),
+            switchMap(([imageFile, loader]) => from(loader.updateFile(id.id, imageFile)).pipe(map(() => [id] as const)))
         )
     )
 );
-applyModifications$.subscribe((x) => {
-    console.log('applyModifications$', x);
-});
+applyModifications$
+    .pipe(
+        finalize(() => {
+            console.log('OVERLAY_LOG: test');
+        })
+    )
+    .subscribe((x) => {
+        console.log('applyModifications$', x);
+    });

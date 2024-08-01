@@ -1,4 +1,4 @@
-import { Observable } from 'rxjs';
+import { Observable, shareReplay } from 'rxjs';
 import { createSignalState } from '../utils/signalPrimitives/createSignal';
 import { Signal } from 'signal-polyfill';
 import { effect } from './effect';
@@ -24,5 +24,5 @@ export function signalToObs<T>(signal: Signal.Computed<T> | Signal.State<T> | St
             subscriber.next(events);
         });
         return dispose;
-    });
+    }).pipe(shareReplay({ bufferSize: 1, refCount: true }));
 }

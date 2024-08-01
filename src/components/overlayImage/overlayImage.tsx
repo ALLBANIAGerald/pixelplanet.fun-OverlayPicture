@@ -1,7 +1,7 @@
 import { useSignal } from '../../store/useSignal';
 import { selectPageStateCanvasId, templateByIdObs } from '../../utils/getPageReduxStore';
 import { templateLoaderReadyObs, templatesIdsInViewObs, viewCenterSignal, viewportSizeSignal, viewScaleSignal } from '../../store/slices/gameSlice';
-import { OverlayImage, dragModeEnabled } from '../../store/slices/overlaySlice';
+import { OverlayImage, dragModeEnabled, templateModificationSettingsForId$, updateModificationSettings } from '../../store/slices/overlaySlice';
 import { Accessor, createEffect, createMemo, createSignal, For, from, onCleanup, Show, untrack } from 'solid-js';
 import { gameCoordsToScreen, screenToGameCoords } from '../../utils/coordConversion';
 import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
@@ -204,6 +204,7 @@ function OverlayImageWithControls(props: { template: { imageId: number; x: numbe
     });
     const viewPortIsMouseDown = from(viewPortIsMouseDown$);
     const loader = from(templateLoaderReadyObs);
+    const modificationSettings = from(templateModificationSettingsForId$(props.template.imageId));
     return (
         <Show when={dragMode()}>
             <div
@@ -235,9 +236,18 @@ function OverlayImageWithControls(props: { template: { imageId: number; x: numbe
                                     void loader()?.updateFile(props.template.imageId, file);
                                 }}
                             />
+
                             {/* TODO, add "Convert colors", "Image brightness" settings here */}
                         </div>
                     </label>
+                    <input
+                        type="checkbox"
+                        class="tw-toggle tw-toggle-primary"
+                        onchange={(e) => {
+                            updateModificationSettings(props.template.imageId, { convertColors: e.target.checked });
+                        }}
+                        checked={modificationSettings()?.convertColors}
+                    />
                 </div>
                 <div
                     class="tw-absolute tw-left-[--left-offset] tw-top-[--top-offset] -tw-translate-x-1/2 -tw-translate-y-1/2 tw-transition-[left,top] [transition-timing-function:linear(0.2_0%,1_100%)]"

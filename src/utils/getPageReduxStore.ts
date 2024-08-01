@@ -197,7 +197,10 @@ export const pageReduxStateObs = pageReduxStoreObs.pipe(
 );
 type Observed<T> = T extends Observable<infer X> ? X : never;
 const templatesObs = pageReduxStateObs.pipe(map((x) => x.templates));
-const templateListObs = templatesObs.pipe(map((x) => x.list));
+const templateListObs = templatesObs.pipe(
+    map((x) => x.list),
+    distinctUntilChanged()
+);
 export const templateByIdObs = templateListObs.pipe(
     map((x) =>
         x.reduce((acc, value) => {
@@ -235,8 +238,10 @@ export const templateSmallPixelsObs = pageReduxStateObs.pipe(
 );
 
 export const stateCanvasPaletteObs = pageReduxStateObs.pipe(
-    map((state) => {
-        return Array.from(new Uint32Array(state.canvas.palette.abgr)).map<[number, number, number]>((abgr) => {
+    map((state) => state.canvas.palette.abgr),
+    distinctUntilChanged(),
+    map((paletteAbgr) => {
+        return Array.from(new Uint32Array(paletteAbgr)).map<[number, number, number]>((abgr) => {
             // eslint-disable-next-line no-bitwise
             const b = (abgr & 0x00ff0000) >>> 16;
             // eslint-disable-next-line no-bitwise
@@ -245,8 +250,7 @@ export const stateCanvasPaletteObs = pageReduxStateObs.pipe(
             const r = abgr & 0x000000ff;
             return [r, g, b];
         });
-    }),
-    distinctUntilChanged()
+    })
 );
 
 type StoreActionType =
