@@ -1,7 +1,7 @@
 import { createSignalComputedNested } from './signalPrimitives/createSignalComputedNested';
 import { createSignalComputed, createSignalState } from './signalPrimitives/createSignal';
 import { obsToSignal, signalToObs } from '../store/obsToSignal';
-import { distinctUntilChanged, filter, map, Observable, shareReplay, Subject, switchMap, take, tap } from 'rxjs';
+import { distinctUntilChanged, filter, map, mergeAll, Observable, shareReplay, Subject, switchMap, take, tap } from 'rxjs';
 
 interface Store<StoreState> {
     subscribe: (callback: () => void) => () => void;
@@ -215,6 +215,14 @@ export const templatesIdsObs = templatesObs.pipe(
     distinctUntilChanged((prev, curr) => prev.symmetricDifference(curr).size === 0),
     shareReplay({ bufferSize: 1, refCount: true })
 );
+export const templateIdsStream$ = templatesIdsObs.pipe(mergeAll());
+export function getTemplateById$(id: number) {
+    return templateByIdObs.pipe(
+        map((t) => t.get(id)),
+        filter((x) => x !== undefined),
+        distinctUntilChanged()
+    );
+}
 export const stateCanvasesObs = pageReduxStateObs.pipe(
     map((x) => x.canvas.canvases),
     distinctUntilChanged()

@@ -2,16 +2,33 @@ import logger from '../../handlers/logger';
 import localforage from 'localforage';
 import { Signal } from 'signal-polyfill';
 import { getStoredValue } from '../../store/getStoredData';
-import { stateCanvasPaletteObs, selectPageStateCanvasId, templateByIdObs, templatesIdsObs } from '../../utils/getPageReduxStore';
+import { stateCanvasPaletteObs, selectPageStateCanvasId, templateByIdObs } from '../../utils/getPageReduxStore';
 import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
 
 import { templateLoaderReadyObs, templatesIdsInViewObs, viewCenterSignal, viewScaleSignal } from './gameSlice';
 import { gameCoordsToScreen, screenToGameCoords } from '../../utils/coordConversion';
 import { createSignalComputed, createSignalState } from '../../utils/signalPrimitives/createSignal';
-import { combineLatestWith, concatMap, distinctUntilChanged, filter, finalize, forkJoin, from, lastValueFrom, map, mergeAll, mergeMap, ObservedValueOf, of, Subject, switchMap, take, tap } from 'rxjs';
+import {
+    combineLatestWith,
+    concatMap,
+    distinctUntilChanged,
+    filter,
+    from,
+    lastValueFrom,
+    map,
+    mergeAll,
+    Observable,
+    ObservedValueOf,
+    of,
+    shareReplay,
+    Subject,
+    switchMap,
+    take,
+    withLatestFrom,
+} from 'rxjs';
 import { pictureConverterApi } from '../../pictureConversionApi';
 import { signalToObs } from '../obsToSignal';
-import { log$, traceLog$ } from '../log$';
+import { traceLog$ } from '../log$';
 
 interface OverlayImageInputState {
     url?: string;
@@ -283,7 +300,7 @@ export const dragModeEnabled = createSignalState(false);
 export const templateModificationMapping = persistedSignal(new Map<number, number>(), 'templateModificationMapping');
 const templateModificationSettings = persistedSignal(new Map<number, { convertColors: boolean; imageBrightness: number }>(), 'templateModificationSettings');
 export function updateModificationSettings(templateId: number, settings: { convertColors?: boolean; imageBrightness?: number }) {
-    modifiedTemplates$.pipe(map((m) => m.find((x) => x.id === templateId)?.originalId ?? templateId)).subscribe((targetTemplateId) => {
+    modifiedTemplatesIds$.pipe(map((m) => m.find((x) => x.id === templateId)?.originalId ?? templateId)).subscribe((targetTemplateId) => {
         const [get, set] = templateModificationSettings;
         const prev = get();
         const prevInstance = prev.get(targetTemplateId);
@@ -291,35 +308,6 @@ export function updateModificationSettings(templateId: number, settings: { conve
         const newBrightness = settings.imageBrightness ?? prevInstance?.imageBrightness ?? 0;
         set(new Map(prev).set(targetTemplateId, { convertColors: newConvertColors, imageBrightness: newBrightness }));
     });
-}
-
-const templateModificationSettings$ = signalToObs(templateModificationSettings);
-export function templateModificationSettingsForId$(templateId: number) {
-    return templateModificationSettings$.pipe(
-        combineLatestWith(modifiedTemplates$.pipe(map((m) => m.find((x) => x.id === templateId)?.originalId ?? templateId))),
-        map(([settingsMap, templateId]) => settingsMap.get(templateId)),
-        filter((x) => x !== undefined),
-        distinctUntilChanged(),
-        traceLog$('templateModificationSettingsForId$ settings')
-    );
-}
-
-function getTemplateImageDataWithModificationsApplied$(id: number) {
-    return templatesIdsObs.pipe(
-        filter((x) => x.has(id)),
-        traceLog$('getTemplateImageDataWithModificationsApplied$ ids'),
-        concatMap(() =>
-            templateModificationSettingsForId$(id).pipe(
-                traceLog$('getTemplateImageDataWithModificationsApplied$ templateModificationSettingsForId$ settings'),
-                filter((x) => x.convertColors),
-                traceLog$('getTemplateImageDataWithModificationsApplied$ templateModificationSettingsForId$ true')
-            )
-        ),
-        traceLog$('getTemplateImageDataWithModificationsApplied$ settings'),
-        combineLatestWith(getTemplateImageData$(id), stateCanvasPaletteObs),
-        traceLog$('getTemplateImageDataWithModificationsApplied$ canvas'),
-        switchMap(([modificationSettings, imageData, palette]) => from(pictureConverterApi.applyModificationsToImageData(palette, imageData, modificationSettings.imageBrightness)))
-    );
 }
 
 function getTemplateById$(id: number) {
@@ -342,15 +330,6 @@ function getTemplateByTitle$(title: string) {
         map((x) => Array.from(x.values()).find((x) => x.title === title)),
         filter((x) => x !== undefined),
         distinctUntilChanged()
-    );
-}
-
-function getTemplateImageData$(id: number) {
-    return getTemplateById$(id).pipe(
-        take(1),
-        combineLatestWith(getTemplateCanvas$(id)),
-        map(([template, canvas]) => canvas.getContext('2d')?.getImageData(0, 0, template.width, template.height, { colorSpace: 'srgb' })),
-        filter((x) => x !== undefined)
     );
 }
 
@@ -379,12 +358,12 @@ const templatesAndModifiedIds$ = templateByIdObs.pipe(
     )
 );
 
-const modifiedTemplates$ = templatesAndModifiedIds$.pipe(
+const modifiedTemplatesIds$ = templatesAndModifiedIds$.pipe(
     map((ids) => ids.filter((x) => x.originalId !== undefined)),
     distinctUntilChanged((prev, curr) => new Set(prev.map((x) => x.id)).symmetricDifference(new Set(curr.map((x) => x.id))).size === 0)
 );
 const visibleModifiedTemplateIds$ = templatesIdsInViewObs.pipe(
-    combineLatestWith(modifiedTemplates$),
+    combineLatestWith(modifiedTemplatesIds$),
     map(([ids, modIds]) =>
         Array.from(ids.values())
             .map((x) => modIds.find((m) => m.id === x))
@@ -392,12 +371,23 @@ const visibleModifiedTemplateIds$ = templatesIdsInViewObs.pipe(
     ),
     distinctUntilChanged((prev, curr) => new Set(prev).symmetricDifference(new Set(curr)).size === 0)
 );
-const originalTemplates$ = templatesAndModifiedIds$.pipe(map((ids) => ids.filter((x) => x.originalId === undefined).map((x) => x.id)));
+const originalTemplatesIds$ = templatesAndModifiedIds$.pipe(map((ids) => ids.filter((x) => x.originalId === undefined).map((x) => x.id)));
 const visibleOriginalTemplateIds$ = templatesIdsInViewObs.pipe(
-    combineLatestWith(originalTemplates$),
+    combineLatestWith(originalTemplatesIds$),
     map(([ids, origIds]) => Array.from(ids.values()).filter((x) => origIds.find((o) => o === x))),
     distinctUntilChanged((prev, curr) => new Set(prev).symmetricDifference(new Set(curr)).size === 0)
 );
+
+const templateModificationSettings$ = signalToObs(templateModificationSettings);
+const templateModificationSettingsStream$ = modifiedTemplatesIds$.pipe(
+    mergeAll(),
+    combineLatestWith(templateModificationSettings$),
+    map(([id, settings]) => ({ id, settings: settings.get(id.originalId) })),
+    filter((x) => x.settings !== undefined),
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    map((x) => ({ ...x, settings: x.settings! }))
+);
+const templateModSettingsConvertEnabledStream$ = templateModificationSettingsStream$.pipe(filter((x) => x.settings.convertColors));
 
 async function addNewTemplate(file: File, loader: ObservedValueOf<typeof templateLoaderReadyObs>, title: string, canvasId: string, x: number, y: number) {
     await loader.addFile(file, title, canvasId, x, y);
@@ -438,44 +428,121 @@ function getProcessedTemplateWithModifications$(id: number) {
 }
 
 const templatesWithModifications$ = visibleOriginalTemplateIds$.pipe(
-    combineLatestWith(modifiedTemplates$),
+    combineLatestWith(modifiedTemplatesIds$),
     map(([ids, modifiedIds]) => ids.filter((x) => !modifiedIds.find((m) => m.originalId === x))),
     distinctUntilChanged((prev, curr) => new Set(prev).symmetricDifference(new Set(curr)).size === 0),
     traceLog$('templatesWithModifications$ ids'),
     mergeAll(),
-    traceLog$('templatesWithModifications$ id'),
     concatMap((id) => getProcessedTemplateWithModifications$(id)),
     traceLog$('templatesWithModifications$ result')
 );
-templatesWithModifications$.subscribe();
 
-const applyModifications$ = visibleModifiedTemplateIds$.pipe(
-    traceLog$('applyModifications$ ids'),
+const modificationCanvas$ = new Observable<HTMLCanvasElement>((subscriber) => {
+    subscriber.next(document.createElement('canvas'));
+    subscriber.complete();
+}).pipe(shareReplay(1));
+const imageDataToBlobSubject = new Subject<ImageData>();
+const imageDataToBlob$ = imageDataToBlobSubject.pipe(
+    combineLatestWith(modificationCanvas$),
+    concatMap(([imageData, canvas]) => {
+        canvas.width = imageData.width;
+        canvas.height = imageData.height;
+        const ctx = canvas.getContext('2d');
+        ctx?.putImageData(imageData, 0, 0);
+        return from(canvasToBlob(canvas)).pipe(map((blob) => ({ blob, imageData })));
+    })
+);
+function convertImageDataToBlob$(imageData: ImageData) {
+    imageDataToBlobSubject.next(imageData);
+    return imageDataToBlob$.pipe(
+        filter((x) => x.imageData === imageData),
+        take(1),
+        map((x) => x.blob)
+    );
+}
+
+function getTemplateImageData$(id: number) {
+    return getTemplateById$(id).pipe(
+        combineLatestWith(getTemplateCanvas$(id)),
+        map(([template, canvas]) => canvas.getContext('2d')?.getImageData(0, 0, template.width, template.height, { colorSpace: 'srgb' })),
+        filter((x) => x !== undefined)
+    );
+}
+
+export function templateModificationSettingsForId$(templateId: number) {
+    return templateModificationSettings$.pipe(
+        combineLatestWith(modifiedTemplatesIds$.pipe(map((m) => m.find((x) => x.id === templateId)?.originalId ?? templateId))),
+        map(([settingsMap, templateId]) => settingsMap.get(templateId)),
+        filter((x) => x !== undefined),
+        distinctUntilChanged()
+    );
+}
+
+function getTemplateImageDataWithModificationsApplied$(id: number) {
+    return templateModificationSettingsForId$(id).pipe(
+        filter((x) => x.convertColors),
+        combineLatestWith(getTemplateImageData$(id), stateCanvasPaletteObs),
+        switchMap(([modificationSettings, imageData, palette]) => from(pictureConverterApi.applyModificationsToImageData(palette, imageData, modificationSettings.imageBrightness)))
+    );
+}
+
+// Update existing on screen modified templates
+const filesToApplyModifications$ = visibleModifiedTemplateIds$.pipe(
     mergeAll(),
-    traceLog$('applyModifications$ id'),
-    concatMap((id) =>
+    switchMap((id) =>
         getTemplateImageDataWithModificationsApplied$(id.originalId).pipe(
-            traceLog$('applyModifications$ imagedata'),
-            switchMap((x) => {
-                const c = document.createElement('canvas');
-                c.width = x.width;
-                c.height = x.height;
-                const ctx = c.getContext('2d');
-                ctx?.putImageData(x, 0, 0);
-                return from(canvasToBlob(c));
-            }),
+            switchMap((x) => convertImageDataToBlob$(x)),
             map((blob) => new File([blob], `modified-image`)),
-            combineLatestWith(templateLoaderReadyObs),
-            switchMap(([imageFile, loader]) => from(loader.updateFile(id.id, imageFile)).pipe(map(() => [id] as const)))
+            combineLatestWith(of(id))
         )
     )
 );
-applyModifications$
+filesToApplyModifications$.pipe(combineLatestWith(templateLoaderReadyObs)).subscribe(([[imageFile, id], loader]) => {
+    void loader.updateFile(id.id, imageFile);
+});
+
+// Sync turned on state between modified and original
+visibleOriginalTemplateIds$
     .pipe(
-        finalize(() => {
-            console.log('OVERLAY_LOG: test');
-        })
+        mergeAll(),
+        withLatestFrom(visibleModifiedTemplateIds$),
+        map(([id, modifiedIds]) => modifiedIds.find((x) => x.originalId === id)),
+        filter((x) => x !== undefined),
+        // Original was enabled, turn off modified template
+        switchMap((id) => getTemplateById$(id.id))
     )
-    .subscribe((x) => {
-        console.log('applyModifications$', x);
+    .pipe(combineLatestWith(templateLoaderReadyObs))
+    .subscribe(([template, loader]) => {
+        console.log('turning off modified');
+        loader.changeTemplate(template.title, { enabled: false });
+    });
+visibleModifiedTemplateIds$
+    .pipe(
+        mergeAll(),
+        withLatestFrom(visibleOriginalTemplateIds$),
+        map(([id, originalIds]) => originalIds.find((x) => x === id.originalId)),
+        filter((x) => x !== undefined),
+        // Modified was enabled, turn off original template
+        switchMap((id) => getTemplateById$(id))
+    )
+    .pipe(combineLatestWith(templateLoaderReadyObs))
+    .subscribe(([template, loader]) => {
+        console.log('turning off og');
+        loader.changeTemplate(template.title, { enabled: false });
+    });
+
+// Delete modified templates when original is deleted
+const modifiedTemplatesIdWithoutOriginal$ = modifiedTemplatesIds$.pipe(
+    mergeAll(),
+    combineLatestWith(originalTemplatesIds$),
+    filter(([id, originalIds]) => !originalIds.find((x) => x === id.originalId)),
+    map((x) => x[0].id)
+);
+modifiedTemplatesIdWithoutOriginal$
+    .pipe(
+        switchMap((id) => getTemplateById$(id)),
+        combineLatestWith(templateLoaderReadyObs)
+    )
+    .subscribe(([{ title }, loader]) => {
+        loader.deleteTemplate(title);
     });
