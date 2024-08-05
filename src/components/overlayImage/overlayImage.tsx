@@ -1,7 +1,7 @@
 import { useSignal } from '../../store/useSignal';
 import { selectPageStateCanvasId, templateByIdObs } from '../../utils/getPageReduxStore';
 import { templateLoaderReadyObs, templatesIdsInViewObs, viewCenterSignal, viewportSizeSignal, viewScaleSignal } from '../../store/slices/gameSlice';
-import { OverlayImage, dragModeEnabled, templateModificationSettingsForId$, updateModificationSettings } from '../../store/slices/overlaySlice';
+import { OverlayImage, dragModeEnabled, modifiedTemplatesIds$, templateModificationSettingsForId$, updateModificationSettings } from '../../store/slices/overlaySlice';
 import { Accessor, createEffect, createMemo, createSignal, For, from, onCleanup, Show, untrack } from 'solid-js';
 import { gameCoordsToScreen, screenToGameCoords } from '../../utils/coordConversion';
 import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
@@ -207,63 +207,65 @@ function OverlayImageWithControls(props: { template: { imageId: number; x: numbe
     const modificationSettings = from(templateModificationSettingsForId$(props.template.imageId));
     return (
         <Show when={dragMode()}>
-            <div
-                ref={draggable.ref}
-                class="tw-pointer-events-none tw-relative tw-left-[--left-offset] tw-top-[--top-offset] tw-h-[--height] tw-w-[--width] tw-origin-top-left"
-                style={{
-                    ...transformStyle(draggable.transform),
-                    '--left-offset': `${screenOffset().clientX.toString()}px`,
-                    '--top-offset': `${screenOffset().clientY.toString()}px`,
-                    '--width': `${sizeOnScreen().width.toString()}px`,
-                    '--height': `${sizeOnScreen().height.toString()}px`,
-                }}
-            >
-                <div class="tw-pointer-events-auto tw-flex -tw-translate-y-full">
-                    <label for="template-file">
-                        <div role="button" class="tw-btn tw-btn-primary tw-h-12 tw-w-12 tw-p-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="tw-h-6 tw-w-6" viewBox="0 -960 960 960" fill="currentColor">
-                                <path d="M720-330q0 104-73 177T470-80q-104 0-177-73t-73-177v-370q0-75 52.5-127.5T400-880q75 0 127.5 52.5T580-700v350q0 46-32 78t-78 32q-46 0-78-32t-32-78v-370h80v370q0 13 8.5 21.5T470-320q13 0 21.5-8.5T500-350v-350q-1-42-29.5-71T400-800q-42 0-71 29t-29 71v370q-1 71 49 120.5T470-160q70 0 119-49.5T640-330v-390h80v390Z" />
-                            </svg>
-                            <input
-                                id="template-file"
-                                accept="image/*"
-                                type="file"
-                                class="tw-hidden"
-                                onchange={(e) => {
-                                    if (!e.target.files) return;
-                                    const file = e.target.files[0];
-                                    if (!file) return;
-                                    void loader()?.updateFile(props.template.imageId, file);
-                                }}
-                            />
-
-                            {/* TODO, add "Convert colors", "Image brightness" settings here */}
-                        </div>
-                    </label>
-                    <input
-                        type="checkbox"
-                        class="tw-toggle tw-toggle-primary"
-                        onchange={(e) => {
-                            updateModificationSettings(props.template.imageId, { convertColors: e.target.checked });
-                        }}
-                        checked={modificationSettings()?.convertColors}
-                    />
-                </div>
+            <div class="tw-absolute tw-left-0 tw-top-0 tw-h-0 tw-w-0">
                 <div
-                    class="tw-absolute tw-left-[--left-offset] tw-top-[--top-offset] -tw-translate-x-1/2 -tw-translate-y-1/2 tw-transition-[left,top] [transition-timing-function:linear(0.2_0%,1_100%)]"
-                    classList={{
-                        'tw-pointer-events-auto': !viewPortIsMouseDown(),
-                    }}
+                    ref={draggable.ref}
+                    class="tw-pointer-events-none tw-relative tw-left-[--left-offset] tw-top-[--top-offset] tw-h-[--height] tw-w-[--width] tw-origin-top-left"
                     style={{
-                        '--left-offset': `${dragButtonCoordsRelativeToImage().x.toString()}px`,
-                        '--top-offset': `${dragButtonCoordsRelativeToImage().y.toString()}px`,
+                        ...transformStyle(draggable.transform),
+                        '--left-offset': `${screenOffset().clientX.toString()}px`,
+                        '--top-offset': `${screenOffset().clientY.toString()}px`,
+                        '--width': `${sizeOnScreen().width.toString()}px`,
+                        '--height': `${sizeOnScreen().height.toString()}px`,
                     }}
                 >
-                    <button class="tw-btn tw-btn-primary tw-h-12 tw-w-12 tw-p-0" {...draggable.dragActivators}>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="tw-h-6 tw-w-6" viewBox="0 -960 960 960" fill="currentColor">
-                            <path d="M480-80 310-250l57-57 73 73v-206H235l73 72-58 58L80-480l169-169 57 57-72 72h206v-206l-73 73-57-57 170-170 170 170-57 57-73-73v206h205l-73-72 58-58 170 170-170 170-57-57 73-73H520v205l72-73 58 58L480-80Z" />
-                        </svg>
-                    </button>
+                    <div class="tw-pointer-events-auto tw-flex -tw-translate-y-full">
+                        <label for="template-file">
+                            <div role="button" class="tw-btn tw-btn-primary tw-h-12 tw-w-12 tw-p-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="tw-h-6 tw-w-6" viewBox="0 -960 960 960" fill="currentColor">
+                                    <path d="M720-330q0 104-73 177T470-80q-104 0-177-73t-73-177v-370q0-75 52.5-127.5T400-880q75 0 127.5 52.5T580-700v350q0 46-32 78t-78 32q-46 0-78-32t-32-78v-370h80v370q0 13 8.5 21.5T470-320q13 0 21.5-8.5T500-350v-350q-1-42-29.5-71T400-800q-42 0-71 29t-29 71v370q-1 71 49 120.5T470-160q70 0 119-49.5T640-330v-390h80v390Z" />
+                                </svg>
+                                <input
+                                    id="template-file"
+                                    accept="image/*"
+                                    type="file"
+                                    class="tw-hidden"
+                                    onchange={(e) => {
+                                        if (!e.target.files) return;
+                                        const file = e.target.files[0];
+                                        if (!file) return;
+                                        void loader()?.updateFile(props.template.imageId, file);
+                                    }}
+                                />
+
+                                {/* TODO, add "Convert colors", "Image brightness" settings here */}
+                            </div>
+                        </label>
+                        <input
+                            type="checkbox"
+                            class="tw-toggle tw-toggle-primary"
+                            onchange={(e) => {
+                                updateModificationSettings(props.template.imageId, { convertColors: e.target.checked });
+                            }}
+                            checked={modificationSettings()?.convertColors}
+                        />
+                    </div>
+                    <div
+                        class="tw-absolute tw-left-[--left-offset] tw-top-[--top-offset] -tw-translate-x-1/2 -tw-translate-y-1/2 tw-transition-[left,top] [transition-timing-function:linear(0.2_0%,1_100%)]"
+                        classList={{
+                            'tw-pointer-events-auto': !viewPortIsMouseDown(),
+                        }}
+                        style={{
+                            '--left-offset': `${dragButtonCoordsRelativeToImage().x.toString()}px`,
+                            '--top-offset': `${dragButtonCoordsRelativeToImage().y.toString()}px`,
+                        }}
+                    >
+                        <button class="tw-btn tw-btn-primary tw-h-12 tw-w-12 tw-p-0" {...draggable.dragActivators}>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="tw-h-6 tw-w-6" viewBox="0 -960 960 960" fill="currentColor">
+                                <path d="M480-80 310-250l57-57 73 73v-206H235l73 72-58 58L80-480l169-169 57 57-72 72h206v-206l-73 73-57-57 170-170 170 170-57 57-73-73v206h205l-73-72 58-58 170 170-170 170-57-57 73-73H520v205l72-73 58 58L480-80Z" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             </div>
         </Show>
@@ -283,8 +285,12 @@ function useMoveImageTo() {
     const viewScale = useSignal(viewScaleSignal);
     const readyTemplateLoader = from(templateLoaderReadyObs);
     const templatesById = from(templateByIdObs);
+    const modifiedTemplatesIds = from(modifiedTemplatesIds$);
     return (templateId: number, screenX: number, screenY: number) => {
-        const template = templatesById()?.get(templateId);
+        const modIds = modifiedTemplatesIds();
+        if (!modIds) return;
+        const modOrOrgId = modIds.find((x) => x.id === templateId)?.originalId ?? templateId;
+        const template = templatesById()?.get(modOrOrgId);
         if (!template) return;
         const gameCoords = screenToGameCoords({ clientX: screenX, clientY: screenY }, windowSize(), viewCenter(), viewScale());
         readyTemplateLoader()?.changeTemplate(template.title, { x: Math.round(gameCoords.x), y: Math.round(gameCoords.y) });

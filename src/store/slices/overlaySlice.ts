@@ -363,7 +363,7 @@ const templatesAndModifiedIds$ = templateByIdObs.pipe(
     )
 );
 
-const modifiedTemplatesIds$ = templatesAndModifiedIds$.pipe(
+export const modifiedTemplatesIds$ = templatesAndModifiedIds$.pipe(
     map((ids) => ids.filter((x) => x.originalId !== undefined)),
     distinctUntilChanged((prev, curr) => new Set(prev.map((x) => x.id)).symmetricDifference(new Set(curr.map((x) => x.id))).size === 0)
 );
