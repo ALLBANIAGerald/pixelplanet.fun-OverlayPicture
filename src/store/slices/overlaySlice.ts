@@ -403,47 +403,49 @@ async function addNewTemplate(file: File, loader: ObservedValueOf<typeof templat
 }
 
 // TODO when shouldConvertColors is switched, enabled or disable `template` vs `modifiedTemplate`
-function getProcessedTemplateWithModifications$(id: number) {
-    return getTemplateById$(id)
-        .pipe(
-            take(1),
-            traceLog$('getProcessedTemplateWithModifications$ template'),
-            combineLatestWith(templateModificationSettingsForId$(id).pipe(filter((x) => x.convertColors))),
-            traceLog$('getProcessedTemplateWithModifications$ template-convert'),
-            filter(([, modificationSettings]) => modificationSettings.convertColors),
-            map(([template]) => template),
-            take(1),
-            combineLatestWith(getTemplateCanvas$(id).pipe(switchMap((canvas) => from(canvasToBlob(canvas)))))
+visibleOriginalTemplateIds$
+    .pipe(
+        combineLatestWith(modifiedTemplatesIds$),
+        map(([ids, modifiedIds]) => ids.filter((x) => !modifiedIds.find((m) => m.originalId === x))),
+        distinctUntilChanged((prev, curr) => new Set(prev).symmetricDifference(new Set(curr)).size === 0),
+        traceLog$('templatesWithModifications$ ids'),
+        switchMap((ids) =>
+            combineLatest(
+                ids.map((id) =>
+                    of(id)
+                        .pipe(
+                            withLatestFrom(getTemplateById$(id)),
+                            traceLog$('getProcessedTemplateWithModifications$ template'),
+                            combineLatestWith(templateModificationSettingsForId$(id).pipe(filter((x) => x.convertColors))),
+                            traceLog$('getProcessedTemplateWithModifications$ template-convert'),
+                            filter(([, modificationSettings]) => modificationSettings.convertColors),
+                            map(([[, template]]) => template),
+                            take(1),
+                            combineLatestWith(getTemplateCanvas$(id).pipe(switchMap((canvas) => from(canvasToBlob(canvas)))))
+                        )
+                        .pipe(
+                            map(([template, blob]) => [template, new File([blob], `${template.title}-modified-${template.imageId.toString()}`)] as const),
+                            traceLog$('getProcessedTemplateWithModifications$ new file'),
+                            combineLatestWith(templateLoaderReadyObs),
+                            traceLog$('getProcessedTemplateWithModifications$ with loader'),
+                            switchMap(([[ogTemplate, file], loader]) => {
+                                const title = `${ogTemplate.title}-modified-imageoverlay-${ogTemplate.imageId.toString()}`;
+                                return from(
+                                    (async () => {
+                                        await loader.addFile(file, title, ogTemplate.canvasId, ogTemplate.x, ogTemplate.y);
+                                        loader.changeTemplate(ogTemplate.title, { enabled: false });
+                                        const newTemplate = await lastValueFrom(getTemplateByTitle$(title));
+                                        return newTemplate;
+                                    })()
+                                );
+                            }),
+                            traceLog$('getProcessedTemplateWithModifications$ result')
+                        )
+                )
+            )
         )
-        .pipe(
-            map(([template, blob]) => [template, new File([blob], `${template.title}-modified-${template.imageId.toString()}`)] as const),
-            traceLog$('getProcessedTemplateWithModifications$ new file'),
-            combineLatestWith(templateLoaderReadyObs),
-            traceLog$('getProcessedTemplateWithModifications$ with loader'),
-            switchMap(([[ogTemplate, file], loader]) => {
-                const title = `${ogTemplate.title}-modified-imageoverlay-${ogTemplate.imageId.toString()}`;
-                return from(
-                    (async () => {
-                        await loader.addFile(file, title, ogTemplate.canvasId, ogTemplate.x, ogTemplate.y);
-                        loader.changeTemplate(ogTemplate.title, { enabled: false });
-                        const newTemplate = await lastValueFrom(getTemplateByTitle$(title));
-                        return newTemplate;
-                    })()
-                );
-            }),
-            traceLog$('getProcessedTemplateWithModifications$ result')
-        );
-}
-
-const templatesWithModifications$ = visibleOriginalTemplateIds$.pipe(
-    combineLatestWith(modifiedTemplatesIds$),
-    map(([ids, modifiedIds]) => ids.filter((x) => !modifiedIds.find((m) => m.originalId === x))),
-    distinctUntilChanged((prev, curr) => new Set(prev).symmetricDifference(new Set(curr)).size === 0),
-    traceLog$('templatesWithModifications$ ids'),
-    mergeAll(),
-    concatMap((id) => getProcessedTemplateWithModifications$(id)),
-    traceLog$('templatesWithModifications$ result')
-);
+    )
+    .subscribe();
 
 const modificationCanvas$ = new Observable<HTMLCanvasElement>((subscriber) => {
     subscriber.next(document.createElement('canvas'));
