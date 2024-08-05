@@ -237,7 +237,6 @@ function OverlayImageWithControls(props: { template: { imageId: number; x: numbe
                                         void loader()?.updateFile(props.template.imageId, file);
                                     }}
                                 />
-
                                 {/* TODO, add "Convert colors", "Image brightness" settings here */}
                             </div>
                         </label>
@@ -249,6 +248,21 @@ function OverlayImageWithControls(props: { template: { imageId: number; x: numbe
                             }}
                             checked={modificationSettings()?.convertColors}
                         />
+                        <div class="tw-form-control">
+                            <label class="tw-label tw-cursor-pointer tw-gap-1">
+                                <span class="tw-label-text">Color Brightness</span>
+                                <input
+                                    type="range"
+                                    min="-5"
+                                    max="5"
+                                    value={modificationSettings()?.imageBrightness ?? 0}
+                                    oninput={(e) => {
+                                        updateModificationSettings(props.template.imageId, { imageBrightness: e.target.valueAsNumber });
+                                    }}
+                                    class="tw-range"
+                                />
+                            </label>
+                        </div>
                     </div>
                     <div
                         class="tw-absolute tw-left-[--left-offset] tw-top-[--top-offset] -tw-translate-x-1/2 -tw-translate-y-1/2 tw-transition-[left,top] [transition-timing-function:linear(0.2_0%,1_100%)]"

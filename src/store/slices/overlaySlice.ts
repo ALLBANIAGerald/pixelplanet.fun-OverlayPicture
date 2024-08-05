@@ -326,6 +326,10 @@ function getTemplateById$(id: number) {
 function getTemplateCanvas$(id: number) {
     return templateLoaderReadyObs.pipe(
         switchMap((templateLoader) => from(templateLoader.getTemplate(id))),
+        tap((i) => {
+            // TODO somehow we can't hit this... After `getTemplate` returns promise, it never emits observable
+            console.warn(i);
+        }),
         filter((x) => x !== null)
     );
 }
@@ -471,14 +475,6 @@ function convertImageDataToBlob$(imageData: ImageData) {
     );
 }
 
-function getTemplateImageData$(id: number) {
-    return getTemplateById$(id).pipe(
-        combineLatestWith(getTemplateCanvas$(id)),
-        map(([template, canvas]) => canvas.getContext('2d')?.getImageData(0, 0, template.width, template.height, { colorSpace: 'srgb' })),
-        filter((x) => x !== undefined)
-    );
-}
-
 export function templateModificationSettingsForId$(templateId: number) {
     return templateModificationSettings$.pipe(
         combineLatestWith(modifiedTemplatesIds$.pipe(map((m) => m.find((x) => x.id === templateId)?.originalId ?? templateId))),
@@ -488,19 +484,25 @@ export function templateModificationSettingsForId$(templateId: number) {
     );
 }
 
-function getTemplateImageDataWithModificationsApplied$(id: number) {
-    return templateModificationSettingsForId$(id).pipe(
-        filter((x) => x.convertColors),
-        combineLatestWith(getTemplateImageData$(id), stateCanvasPaletteObs),
-        switchMap(([modificationSettings, imageData, palette]) => from(pictureConverterApi.applyModificationsToImageData(palette, imageData, modificationSettings.imageBrightness)))
-    );
-}
-
 // Update existing on screen modified templates
 const filesToApplyModifications$ = visibleModifiedTemplateIds$.pipe(
     mergeAll(),
     switchMap((id) =>
-        getTemplateImageDataWithModificationsApplied$(id.originalId).pipe(
+        templateModificationSettingsForId$(id.originalId).pipe(
+            filter((x) => x.convertColors),
+            switchMap((x) =>
+                of(x).pipe(
+                    withLatestFrom(
+                        getTemplateById$(id.originalId).pipe(
+                            combineLatestWith(getTemplateCanvas$(id.originalId)),
+                            map(([template, canvas]) => canvas.getContext('2d')?.getImageData(0, 0, template.width, template.height, { colorSpace: 'srgb' })),
+                            filter((x) => x !== undefined)
+                        )
+                    )
+                )
+            ),
+            combineLatestWith(stateCanvasPaletteObs),
+            switchMap(([[modificationSettings, imageData], palette]) => from(pictureConverterApi.applyModificationsToImageData(palette, imageData, modificationSettings.imageBrightness))),
             switchMap((x) => convertImageDataToBlob$(x)),
             map((blob) => new File([blob], `modified-image`)),
             combineLatestWith(of(id))
