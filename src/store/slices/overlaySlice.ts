@@ -9,6 +9,7 @@ import { templateLoaderReadyObs, templatesIdsInViewObs, viewCenterSignal, viewSc
 import { gameCoordsToScreen, screenToGameCoords } from '../../utils/coordConversion';
 import { createSignalComputed, createSignalState } from '../../utils/signalPrimitives/createSignal';
 import {
+    combineLatest,
     combineLatestWith,
     concatMap,
     distinctUntilChanged,
@@ -20,11 +21,14 @@ import {
     Observable,
     ObservedValueOf,
     of,
+    pairwise,
     shareReplay,
+    startWith,
     Subject,
     switchMap,
     take,
     withLatestFrom,
+    tap,
 } from 'rxjs';
 import { pictureConverterApi } from '../../pictureConversionApi';
 import { signalToObs } from '../obsToSignal';
@@ -371,7 +375,10 @@ const visibleModifiedTemplateIds$ = templatesIdsInViewObs.pipe(
     ),
     distinctUntilChanged((prev, curr) => new Set(prev).symmetricDifference(new Set(curr)).size === 0)
 );
-const originalTemplatesIds$ = templatesAndModifiedIds$.pipe(map((ids) => ids.filter((x) => x.originalId === undefined).map((x) => x.id)));
+const originalTemplatesIds$ = templatesAndModifiedIds$.pipe(
+    map((ids) => ids.filter((x) => x.originalId === undefined).map((x) => x.id)),
+    distinctUntilChanged((prev, curr) => new Set(prev).symmetricDifference(new Set(curr)).size === 0)
+);
 const visibleOriginalTemplateIds$ = templatesIdsInViewObs.pipe(
     combineLatestWith(originalTemplatesIds$),
     map(([ids, origIds]) => Array.from(ids.values()).filter((x) => origIds.find((o) => o === x))),
@@ -501,35 +508,73 @@ filesToApplyModifications$.pipe(combineLatestWith(templateLoaderReadyObs)).subsc
     void loader.updateFile(id.id, imageFile);
 });
 
+function filterJustEnabledTemplate(id: number) {
+    return getTemplateById$(id).pipe(
+        map((template) => template.enabled),
+        startWith(true),
+        pairwise(),
+        map(([a, b]) => !a && b),
+        distinctUntilChanged(),
+        filter((x) => !!x)
+    );
+}
+
 // Sync turned on state between modified and original
-visibleOriginalTemplateIds$
+originalTemplatesIds$
     .pipe(
-        mergeAll(),
-        withLatestFrom(visibleModifiedTemplateIds$),
-        map(([id, modifiedIds]) => modifiedIds.find((x) => x.originalId === id)),
-        filter((x) => x !== undefined),
-        // Original was enabled, turn off modified template
-        switchMap((id) => getTemplateById$(id.id))
+        switchMap((ids) =>
+            combineLatest(
+                ids.map((id) =>
+                    of(id).pipe(
+                        switchMap(() => filterJustEnabledTemplate(id)),
+                        withLatestFrom(modifiedTemplatesIds$),
+                        map(([, modifiedIds]) => modifiedIds.find((x) => x.originalId === id)),
+                        filter((x) => x !== undefined),
+                        switchMap((id) =>
+                            of(id).pipe(
+                                withLatestFrom(getTemplateById$(id.id)),
+                                filter(([, x]) => x.enabled),
+                                map(([, template]) => template.title)
+                            )
+                        ),
+                        combineLatestWith(templateLoaderReadyObs),
+                        tap(([title, loader]) => {
+                            loader.changeTemplate(title, { enabled: false });
+                        })
+                    )
+                )
+            )
+        )
     )
-    .pipe(combineLatestWith(templateLoaderReadyObs))
-    .subscribe(([template, loader]) => {
-        console.log('turning off modified');
-        loader.changeTemplate(template.title, { enabled: false });
-    });
-visibleModifiedTemplateIds$
+    .subscribe();
+
+modifiedTemplatesIds$
     .pipe(
-        mergeAll(),
-        withLatestFrom(visibleOriginalTemplateIds$),
-        map(([id, originalIds]) => originalIds.find((x) => x === id.originalId)),
-        filter((x) => x !== undefined),
-        // Modified was enabled, turn off original template
-        switchMap((id) => getTemplateById$(id))
+        switchMap((ids) =>
+            combineLatest(
+                ids.map((id) =>
+                    of(id).pipe(
+                        switchMap(() => filterJustEnabledTemplate(id.id)),
+                        withLatestFrom(originalTemplatesIds$),
+                        map(([, originalIds]) => originalIds.find((x) => x === id.originalId)),
+                        filter((x) => x !== undefined),
+                        switchMap((id) =>
+                            of(id).pipe(
+                                withLatestFrom(getTemplateById$(id)),
+                                filter(([, x]) => x.enabled),
+                                map(([, template]) => template.title)
+                            )
+                        ),
+                        combineLatestWith(templateLoaderReadyObs),
+                        tap(([title, loader]) => {
+                            loader.changeTemplate(title, { enabled: false });
+                        })
+                    )
+                )
+            )
+        )
     )
-    .pipe(combineLatestWith(templateLoaderReadyObs))
-    .subscribe(([template, loader]) => {
-        console.log('turning off og');
-        loader.changeTemplate(template.title, { enabled: false });
-    });
+    .subscribe();
 
 // Delete modified templates when original is deleted
 const modifiedTemplatesIdWithoutOriginal$ = modifiedTemplatesIds$.pipe(

@@ -1,7 +1,7 @@
 import { createSignalComputedNested } from './signalPrimitives/createSignalComputedNested';
 import { createSignalComputed, createSignalState } from './signalPrimitives/createSignal';
 import { obsToSignal, signalToObs } from '../store/obsToSignal';
-import { distinctUntilChanged, filter, map, mergeAll, Observable, shareReplay, Subject, switchMap, take, tap } from 'rxjs';
+import { debounceTime, distinctUntilChanged, filter, map, mergeAll, Observable, shareReplay, Subject, switchMap, take, tap } from 'rxjs';
 
 interface Store<StoreState> {
     subscribe: (callback: () => void) => () => void;
@@ -193,6 +193,8 @@ export const pageReduxStateObs = pageReduxStoreObs.pipe(
                 };
             })
     ),
+    // Sometimes when updating template state, it will end up emitting old data
+    debounceTime(0),
     shareReplay({ bufferSize: 1, refCount: true })
 );
 type Observed<T> = T extends Observable<infer X> ? X : never;
