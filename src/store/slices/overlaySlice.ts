@@ -33,6 +33,7 @@ import {
 import { pictureConverterApi } from '../../pictureConversionApi';
 import { signalToObs } from '../obsToSignal';
 import { traceLog$ } from '../log$';
+import { unsafeWindow } from 'vite-plugin-monkey/dist/client';
 
 interface OverlayImageInputState {
     url?: string;
@@ -518,6 +519,42 @@ function filterJustEnabledTemplate(id: number) {
         filter((x) => !!x)
     );
 }
+
+// Sync position between modified and original
+originalTemplatesIds$
+    .pipe(
+        switchMap((ids) =>
+            combineLatest(
+                ids.map((originalId) =>
+                    of(originalId).pipe(
+                        combineLatestWith(modifiedTemplatesIds$),
+                        map(([, modifiedIds]) => modifiedIds.find((x) => x.originalId === originalId)),
+                        filter((x) => x !== undefined),
+                        distinctUntilChanged((a, b) => a.id === b.id),
+                        switchMap((id) =>
+                            of(id).pipe(
+                                combineLatestWith(getTemplateById$(id.id)),
+                                combineLatestWith(getTemplateById$(id.originalId)),
+                                map(([[, modTemplate], ogTemplate]) => {
+                                    const newData: Parameters<NonNullable<typeof unsafeWindow.templateLoader>['changeTemplate']>['1'] & { title: string } = { title: modTemplate.title };
+                                    if (ogTemplate.canvasId !== modTemplate.canvasId) newData.canvasId = ogTemplate.canvasId;
+                                    if (ogTemplate.x !== modTemplate.x) newData.x = ogTemplate.x;
+                                    if (ogTemplate.y !== modTemplate.y) newData.y = ogTemplate.y;
+                                    return newData;
+                                }),
+                                filter((x) => Object.keys(x).length > 1)
+                            )
+                        ),
+                        combineLatestWith(templateLoaderReadyObs),
+                        tap(([modDiff, loader]) => {
+                            loader.changeTemplate(modDiff.title, modDiff);
+                        })
+                    )
+                )
+            )
+        )
+    )
+    .subscribe();
 
 // Sync turned on state between modified and original
 originalTemplatesIds$
