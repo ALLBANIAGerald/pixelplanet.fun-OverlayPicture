@@ -4,9 +4,11 @@
     "files.exclude": {
         "**/node_modules/": true
     },
-    "cSpell.words": [
-        "Tampermonkey"
-    ],
+    "cSpell.words": ["Tampermonkey"],
     "editor.defaultFormatter": "esbenp.prettier-vscode",
-    "editor.formatOnSave": true
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+        "source.fixAll.eslint": "explicit",
+        "source.fixAll.ts": "explicit"
+    }
 }
