@@ -18,9 +18,9 @@ export const pictureConverter = {
         cancellationIds.add(id);
     },
 
-    async applyModificationsToImageData(id: number, colorPalette: [number, number, number][], imageData: ImageData, brightenBy: number) {
+    async applyModificationsToImageData(id: number, colorPalette: [number, number, number][], imageData: ImageData, brightenBy: number, partialUpdate: (imageData: ImageData) => void) {
         cancellationIds.delete(id);
-        const outImageData = new ImageData(imageData.width, imageData.height);
+        const outImageData = new ImageData(imageData.data, imageData.width, imageData.height);
         outImageData.data.set(imageData.data);
         for (let y = 0; y < outImageData.height; y++) {
             for (let x = 0; x < outImageData.width; x++) {
@@ -31,6 +31,9 @@ export const pictureConverter = {
                         cancellationIds.delete(id);
                         throw new Error('Process cancelled');
                     }
+                }
+                if (idxNum % 60_000 === 0) {
+                    partialUpdate(outImageData);
                 }
                 const idx = idxNum << 2;
 

@@ -34,6 +34,7 @@ import { pictureConverterApi } from '../../pictureConversionApi';
 import { signalToObs } from '../obsToSignal';
 import { traceLog$ } from '../log$';
 import { unsafeWindow } from 'vite-plugin-monkey/dist/client';
+import { proxy } from 'comlink';
 
 interface OverlayImageInputState {
     url?: string;
@@ -510,11 +511,21 @@ const filesToApplyModifications$ = visibleModifiedTemplateIds$.pipe(
                             void pictureConverterApi.cancelProcessById(processingId);
                         };
                         subscriber.add(teardown);
-                        void pictureConverterApi.applyModificationsToImageData(processingId, palette, imageData, modificationSettings.imageBrightness).then((imageData) => {
-                            subscriber.next(imageData);
-                            subscriber.remove(teardown);
-                            subscriber.complete();
-                        });
+                        void pictureConverterApi
+                            .applyModificationsToImageData(
+                                processingId,
+                                palette,
+                                imageData,
+                                modificationSettings.imageBrightness,
+                                proxy((partialImageData) => {
+                                    subscriber.next(partialImageData);
+                                })
+                            )
+                            .then((imageData) => {
+                                subscriber.next(imageData);
+                                subscriber.remove(teardown);
+                                subscriber.complete();
+                            });
                     })
             ),
             switchMap((x) => convertImageDataToBlob$(x)),
