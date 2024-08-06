@@ -467,7 +467,9 @@ const imageDataToBlob$ = imageDataToBlobSubject.pipe(
     })
 );
 function convertImageDataToBlob$(imageData: ImageData) {
-    imageDataToBlobSubject.next(imageData);
+    queueMicrotask(() => {
+        imageDataToBlobSubject.next(imageData);
+    });
     return imageDataToBlob$.pipe(
         filter((x) => x.imageData === imageData),
         take(1),
@@ -492,17 +494,29 @@ const filesToApplyModifications$ = visibleModifiedTemplateIds$.pipe(
             filter((x) => x.convertColors),
             switchMap((x) =>
                 of(x).pipe(
-                    withLatestFrom(
-                        getTemplateById$(id.originalId).pipe(
-                            combineLatestWith(getTemplateCanvas$(id.originalId)),
-                            map(([template, canvas]) => canvas.getContext('2d')?.getImageData(0, 0, template.width, template.height, { colorSpace: 'srgb' })),
-                            filter((x) => x !== undefined)
-                        )
-                    )
+                    withLatestFrom(getTemplateById$(id.originalId)),
+                    combineLatestWith(getTemplateCanvas$(id.originalId)),
+                    map(([[, template], canvas]) => canvas.getContext('2d')?.getImageData(0, 0, template.width, template.height, { colorSpace: 'srgb' })),
+                    filter((x) => x !== undefined),
+                    map((imageData) => [x, imageData] as const)
                 )
             ),
             combineLatestWith(stateCanvasPaletteObs),
-            switchMap(([[modificationSettings, imageData], palette]) => from(pictureConverterApi.applyModificationsToImageData(palette, imageData, modificationSettings.imageBrightness))),
+            switchMap(
+                ([[modificationSettings, imageData], palette]) =>
+                    new Observable<ImageData>((subscriber) => {
+                        const processingId = Date.now();
+                        const teardown = () => {
+                            void pictureConverterApi.cancelProcessById(processingId);
+                        };
+                        subscriber.add(teardown);
+                        void pictureConverterApi.applyModificationsToImageData(processingId, palette, imageData, modificationSettings.imageBrightness).then((imageData) => {
+                            subscriber.next(imageData);
+                            subscriber.remove(teardown);
+                            subscriber.complete();
+                        });
+                    })
+            ),
             switchMap((x) => convertImageDataToBlob$(x)),
             map((blob) => new File([blob], `modified-image`)),
             combineLatestWith(of(id))
