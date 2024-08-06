@@ -488,55 +488,51 @@ export function templateModificationSettingsForId$(templateId: number) {
 }
 
 // Update existing on screen modified templates
-const filesToApplyModifications$ = visibleModifiedTemplateIds$.pipe(
-    mergeAll(),
-    switchMap((id) =>
-        templateModificationSettingsForId$(id.originalId).pipe(
-            filter((x) => x.convertColors),
-            switchMap((x) =>
-                of(x).pipe(
-                    withLatestFrom(getTemplateById$(id.originalId)),
-                    combineLatestWith(getTemplateCanvas$(id.originalId)),
-                    map(([[, template], canvas]) => canvas.getContext('2d')?.getImageData(0, 0, template.width, template.height, { colorSpace: 'srgb' })),
-                    filter((x) => x !== undefined),
-                    map((imageData) => [x, imageData] as const)
-                )
-            ),
-            combineLatestWith(stateCanvasPaletteObs),
-            switchMap(
-                ([[modificationSettings, imageData], palette]) =>
-                    new Observable<ImageData>((subscriber) => {
-                        const processingId = Date.now();
-                        const teardown = () => {
-                            void pictureConverterApi.cancelProcessById(processingId);
-                        };
-                        subscriber.add(teardown);
-                        void pictureConverterApi
-                            .applyModificationsToImageData(
-                                processingId,
-                                palette,
-                                imageData,
-                                modificationSettings.imageBrightness,
-                                proxy((partialImageData) => {
-                                    subscriber.next(partialImageData);
-                                })
-                            )
-                            .then((imageData) => {
-                                subscriber.next(imageData);
-                                subscriber.remove(teardown);
-                                subscriber.complete();
-                            });
-                    })
-            ),
-            switchMap((x) => convertImageDataToBlob$(x)),
-            map((blob) => new File([blob], `modified-image`)),
-            combineLatestWith(of(id))
-        )
-    )
-);
-filesToApplyModifications$.pipe(combineLatestWith(templateLoaderReadyObs)).subscribe(([[imageFile, id], loader]) => {
-    void loader.updateFile(id.id, imageFile);
-});
+export function processModifiedTemplate$(id: { id: number; originalId: number }) {
+    return templateModificationSettingsForId$(id.originalId).pipe(
+        filter((x) => x.convertColors),
+        switchMap((x) =>
+            of(x).pipe(
+                withLatestFrom(getTemplateById$(id.originalId)),
+                combineLatestWith(getTemplateCanvas$(id.originalId)),
+                map(([[, template], canvas]) => canvas.getContext('2d')?.getImageData(0, 0, template.width, template.height, { colorSpace: 'srgb' })),
+                filter((x) => x !== undefined),
+                map((imageData) => [x, imageData] as const)
+            )
+        ),
+        combineLatestWith(stateCanvasPaletteObs),
+        switchMap(
+            ([[modificationSettings, imageData], palette]) =>
+                new Observable<ImageData>((subscriber) => {
+                    const processingId = Date.now();
+                    const teardown = () => {
+                        void pictureConverterApi.cancelProcessById(processingId);
+                    };
+                    subscriber.add(teardown);
+                    void pictureConverterApi
+                        .applyModificationsToImageData(
+                            processingId,
+                            palette,
+                            imageData,
+                            modificationSettings.imageBrightness,
+                            proxy((partialImageData) => {
+                                subscriber.next(partialImageData);
+                            })
+                        )
+                        .then((imageData) => {
+                            subscriber.next(imageData);
+                            subscriber.remove(teardown);
+                            subscriber.complete();
+                        });
+                })
+        ),
+        switchMap((x) => convertImageDataToBlob$(x)),
+        map((blob) => new File([blob], `modified-image`)),
+        combineLatestWith(of(id)),
+        combineLatestWith(templateLoaderReadyObs),
+        switchMap(([[imageFile, id], loader]) => loader.updateFile(id.id, imageFile))
+    );
+}
 
 function filterJustEnabledTemplate(id: number) {
     return getTemplateById$(id).pipe(

@@ -1,7 +1,7 @@
 import { useSignal } from '../../store/useSignal';
 import { selectPageStateCanvasId, templateByIdObs } from '../../utils/getPageReduxStore';
 import { templateLoaderReadyObs, templatesIdsInViewObs, viewCenterSignal, viewportSizeSignal, viewScaleSignal } from '../../store/slices/gameSlice';
-import { OverlayImage, dragModeEnabled, modifiedTemplatesIds$, templateModificationSettingsForId$, updateModificationSettings } from '../../store/slices/overlaySlice';
+import { OverlayImage, dragModeEnabled, modifiedTemplatesIds$, processModifiedTemplate$, templateModificationSettingsForId$, updateModificationSettings } from '../../store/slices/overlaySlice';
 import { Accessor, createEffect, createMemo, createSignal, For, from, onCleanup, Show, untrack } from 'solid-js';
 import { gameCoordsToScreen, screenToGameCoords } from '../../utils/coordConversion';
 import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
@@ -289,6 +289,20 @@ function OverlayImageWithControls(props: { template: { imageId: number; x: numbe
 function OverlayImageRender(props: { imageId: number }) {
     const templatesById = from(templateByIdObs);
     const template = createMemo(() => templatesById()?.get(props.imageId));
+
+    const modifiedIds = from(modifiedTemplatesIds$);
+    const modifiedId = createMemo(() => {
+        const ids = modifiedIds();
+        if (!ids) return;
+        return ids.find((x) => x.id === props.imageId);
+    });
+
+    createEffect(() => {
+        const id = modifiedId();
+        if (!id) return;
+        // Update existing on screen modified templates
+        from(processModifiedTemplate$(id));
+    });
 
     return <Show when={template()}>{(template) => <OverlayImageWithControls template={template()} />}</Show>;
 }
