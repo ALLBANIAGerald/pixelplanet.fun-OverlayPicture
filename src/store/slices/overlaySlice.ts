@@ -581,6 +581,12 @@ originalTemplatesIds$
     )
     .subscribe();
 
+// TODO sync `convert colors` variable with `original/modified` template `enabled` states
+// When original is enabled, if convert is true, set it to false
+// When modified is enabled, if convert is false, set it to true
+// When convert is true, if original is enabled, set it to disabled
+// When convert is false, if modified is enabled, set it to disabled
+
 // Sync turned on state between modified and original
 originalTemplatesIds$
     .pipe(
