@@ -584,8 +584,95 @@ originalTemplatesIds$
 // TODO sync `convert colors` variable with `original/modified` template `enabled` states
 // When original is enabled, if convert is true, set it to false
 // When modified is enabled, if convert is false, set it to true
-// When convert is true, if original is enabled, set it to disabled
-// When convert is false, if modified is enabled, set it to disabled
+// When convert is true, if original is enabled, enable modified and disable og
+// When convert is false, if modified is enabled, enable og and disable modified
+function syncEnabledStateWithConvertColors(templateId: number) {
+    const isEnabled$ = getTemplateById$(templateId).pipe(
+        map((x) => x.enabled),
+        distinctUntilChanged()
+    );
+    const titleById$ = (id: number) =>
+        getTemplateById$(id).pipe(
+            map((x) => x.title),
+            distinctUntilChanged()
+        );
+    const justEnabled$ = filterJustEnabledTemplate(templateId);
+    const isOriginal$ = originalTemplatesIds$.pipe(map((id) => !!id.find((x) => x === templateId)));
+    const isModified$ = modifiedTemplatesIds$.pipe(map((id) => !!id.find((x) => x.id === templateId)));
+    const matchingModifiedTemplateId$ = modifiedTemplatesIds$.pipe(
+        map((ids) => ids.find((id) => id.id === templateId || id.originalId === templateId)),
+        filter((x) => x !== undefined)
+    );
+    const isConvertEnabled$ = templateModificationSettingsForId$(templateId).pipe(map((x) => x.convertColors));
+    const isConvertJustChanged$ = isConvertEnabled$.pipe(
+        startWith(true),
+        pairwise(),
+        map(([a, b]) => !a && b),
+        distinctUntilChanged()
+    );
+
+    const syncOgEnabledConvertOff = isOriginal$.pipe(
+        filter((x) => x),
+        switchMap(() => justEnabled$),
+        switchMap(() => isConvertEnabled$),
+        filter((x) => x),
+        tap(() => {
+            updateModificationSettings(templateId, { convertColors: false });
+        })
+    );
+
+    const syncModEnabledConvertOn = isModified$.pipe(
+        filter((x) => x),
+        switchMap(() => justEnabled$),
+        switchMap(() => isConvertEnabled$),
+        filter((x) => !x),
+        tap(() => {
+            updateModificationSettings(templateId, { convertColors: true });
+        })
+    );
+
+    const syncConvertOnModEnabled = isConvertJustChanged$.pipe(
+        filter((x) => x),
+        switchMap(() => isOriginal$),
+        filter((x) => x),
+        switchMap(() => isEnabled$),
+        filter((x) => x),
+        switchMap(() => matchingModifiedTemplateId$),
+        switchMap((id) =>
+            titleById$(id.id).pipe(
+                map((ogTitle) => ({ ogTitle, id })),
+                switchMap(({ id, ogTitle }) => titleById$(id.id).pipe(map((mTitle) => ({ mTitle, ogTitle, id }))))
+            )
+        ),
+        combineLatestWith(templateLoaderReadyObs),
+        tap(([{ mTitle, ogTitle }, loader]) => {
+            loader.changeTemplate(mTitle, { enabled: true });
+            loader.changeTemplate(ogTitle, { enabled: false });
+        })
+    );
+
+    const syncConvertOffOgEnabled = isConvertJustChanged$.pipe(
+        filter((x) => !x),
+        switchMap(() => isModified$),
+        filter((x) => x),
+        switchMap(() => isEnabled$),
+        filter((x) => x),
+        switchMap(() => matchingModifiedTemplateId$),
+        switchMap((id) =>
+            titleById$(id.id).pipe(
+                map((ogTitle) => ({ ogTitle, id })),
+                switchMap(({ id, ogTitle }) => titleById$(id.id).pipe(map((mTitle) => ({ mTitle, ogTitle, id }))))
+            )
+        ),
+        combineLatestWith(templateLoaderReadyObs),
+        tap(([{ mTitle, ogTitle }, loader]) => {
+            loader.changeTemplate(ogTitle, { enabled: true });
+            loader.changeTemplate(mTitle, { enabled: false });
+        })
+    );
+
+    return combineLatest([syncOgEnabledConvertOff, syncModEnabledConvertOn, syncConvertOnModEnabled, syncConvertOffOgEnabled]);
+}
 
 // Sync turned on state between modified and original
 originalTemplatesIds$
