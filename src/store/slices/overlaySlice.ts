@@ -2,7 +2,7 @@ import logger from '../../handlers/logger';
 import localforage from 'localforage';
 import { Signal } from 'signal-polyfill';
 import { getStoredValue } from '../../store/getStoredData';
-import { stateCanvasPaletteObs, selectPageStateCanvasId, templateByIdObs, templatesIdsObs } from '../../utils/getPageReduxStore';
+import { stateCanvasPaletteObs, selectPageStateCanvasId, templateByIdObs, templatesIdsObs, canvasPaletteReservedOffset$ } from '../../utils/getPageReduxStore';
 import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
 
 import { templateLoaderReadyObs, templatesIdsInViewObs, viewCenterSignal, viewScaleSignal } from './gameSlice';
@@ -500,9 +500,9 @@ export function processModifiedTemplate$(id: { id: number; originalId: number })
                 map((imageData) => [x, imageData] as const)
             )
         ),
-        combineLatestWith(stateCanvasPaletteObs),
+        combineLatestWith(stateCanvasPaletteObs, canvasPaletteReservedOffset$),
         switchMap(
-            ([[modificationSettings, imageData], palette]) =>
+            ([[modificationSettings, imageData], palette, reservedOffset]) =>
                 new Observable<ImageData>((subscriber) => {
                     const processingId = Date.now();
                     const teardown = () => {
@@ -513,6 +513,7 @@ export function processModifiedTemplate$(id: { id: number; originalId: number })
                         .applyModificationsToImageData(
                             processingId,
                             palette,
+                            reservedOffset,
                             imageData,
                             modificationSettings.imageBrightness,
                             proxy((partialImageData) => {

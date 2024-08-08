@@ -247,6 +247,11 @@ export const templateSmallPixelsObs = pageReduxStateObs.pipe(
     distinctUntilChanged()
 );
 
+export const canvasPaletteReservedOffset$ = pageReduxStateObs.pipe(
+    map((state) => state.canvas.clrIgnore),
+    distinctUntilChanged()
+);
+
 export const stateCanvasPaletteObs = pageReduxStateObs.pipe(
     map((state) => state.canvas.palette.abgr),
     distinctUntilChanged(),

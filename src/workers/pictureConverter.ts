@@ -18,7 +18,14 @@ export const pictureConverter = {
         cancellationIds.add(id);
     },
 
-    async applyModificationsToImageData(id: number, colorPalette: [number, number, number][], imageData: ImageData, brightenBy: number, partialUpdate: (imageData: ImageData) => void) {
+    async applyModificationsToImageData(
+        id: number,
+        colorPalette: [number, number, number][],
+        reservedOffset: number,
+        imageData: ImageData,
+        brightenBy: number,
+        partialUpdate: (imageData: ImageData) => void
+    ) {
         cancellationIds.delete(id);
         const outImageData = new ImageData(imageData.data, imageData.width, imageData.height);
         outImageData.data.set(imageData.data);
@@ -29,7 +36,7 @@ export const pictureConverter = {
                     await delay(0);
                     if (cancellationIds.has(id)) {
                         cancellationIds.delete(id);
-                        throw new Error('Process cancelled');
+                        return outImageData;
                     }
                 }
                 if (idxNum % 60_000 === 0) {
@@ -46,7 +53,7 @@ export const pictureConverter = {
                 const g = Math.min(originalG + brightenBy, 255);
                 const b = Math.min(originalB + brightenBy, 255);
 
-                const resultArr = colorConverter.getClosestColorFromPalette(colorPalette, 0, r, g, b);
+                const resultArr = colorConverter.getClosestColorFromPalette(colorPalette, reservedOffset, r, g, b);
                 if (!resultArr) {
                     // unknown color...
                 } else {
