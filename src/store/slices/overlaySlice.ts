@@ -2,7 +2,7 @@ import logger from '../../handlers/logger';
 import localforage from 'localforage';
 import { Signal } from 'signal-polyfill';
 import { getStoredValue } from '../../store/getStoredData';
-import { stateCanvasPaletteObs, selectPageStateCanvasId, templateByIdObs } from '../../utils/getPageReduxStore';
+import { stateCanvasPaletteObs, selectPageStateCanvasId, templateByIdObs, templatesIdsObs } from '../../utils/getPageReduxStore';
 import { windowInnerSize } from '../../utils/signalPrimitives/windowInnerSize';
 
 import { templateLoaderReadyObs, templatesIdsInViewObs, viewCenterSignal, viewScaleSignal } from './gameSlice';
@@ -614,8 +614,8 @@ function syncEnabledStateWithConvertColors(templateId: number) {
     const syncOgEnabledConvertOff = isOriginal$.pipe(
         filter((x) => x),
         switchMap(() => justEnabled$),
-        switchMap(() => isConvertEnabled$),
-        filter((x) => x),
+        withLatestFrom(isConvertEnabled$),
+        filter(([, x]) => x),
         tap(() => {
             updateModificationSettings(templateId, { convertColors: false });
         })
@@ -624,8 +624,8 @@ function syncEnabledStateWithConvertColors(templateId: number) {
     const syncModEnabledConvertOn = isModified$.pipe(
         filter((x) => x),
         switchMap(() => justEnabled$),
-        switchMap(() => isConvertEnabled$),
-        filter((x) => !x),
+        withLatestFrom(isConvertEnabled$),
+        filter(([, isConvertEnabled]) => !isConvertEnabled),
         tap(() => {
             updateModificationSettings(templateId, { convertColors: true });
         })
@@ -633,13 +633,11 @@ function syncEnabledStateWithConvertColors(templateId: number) {
 
     const syncConvertOnModEnabled = isConvertJustChanged$.pipe(
         filter((x) => x),
-        switchMap(() => isOriginal$),
-        filter((x) => x),
-        switchMap(() => isEnabled$),
-        filter((x) => x),
-        switchMap(() => matchingModifiedTemplateId$),
-        switchMap((id) =>
-            titleById$(id.id).pipe(
+        withLatestFrom(isOriginal$, isEnabled$),
+        filter(([, isOg, isEnabled]) => isOg && isEnabled),
+        withLatestFrom(matchingModifiedTemplateId$),
+        switchMap(([, id]) =>
+            titleById$(id.originalId).pipe(
                 map((ogTitle) => ({ ogTitle, id })),
                 switchMap(({ id, ogTitle }) => titleById$(id.id).pipe(map((mTitle) => ({ mTitle, ogTitle, id }))))
             )
@@ -653,13 +651,11 @@ function syncEnabledStateWithConvertColors(templateId: number) {
 
     const syncConvertOffOgEnabled = isConvertJustChanged$.pipe(
         filter((x) => !x),
-        switchMap(() => isModified$),
-        filter((x) => x),
-        switchMap(() => isEnabled$),
-        filter((x) => x),
-        switchMap(() => matchingModifiedTemplateId$),
-        switchMap((id) =>
-            titleById$(id.id).pipe(
+        withLatestFrom(isModified$, isEnabled$),
+        filter(([, isModified, isEnabled]) => isModified && isEnabled),
+        withLatestFrom(matchingModifiedTemplateId$),
+        switchMap(([, id]) =>
+            titleById$(id.originalId).pipe(
                 map((ogTitle) => ({ ogTitle, id })),
                 switchMap(({ id, ogTitle }) => titleById$(id.id).pipe(map((mTitle) => ({ mTitle, ogTitle, id }))))
             )
@@ -673,6 +669,8 @@ function syncEnabledStateWithConvertColors(templateId: number) {
 
     return combineLatest([syncOgEnabledConvertOff, syncModEnabledConvertOn, syncConvertOnModEnabled, syncConvertOffOgEnabled]);
 }
+
+templatesIdsObs.pipe(switchMap((ids) => combineLatest([...ids].map((id) => syncEnabledStateWithConvertColors(id))))).subscribe();
 
 // Sync turned on state between modified and original
 originalTemplatesIds$
