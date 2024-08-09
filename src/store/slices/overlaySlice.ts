@@ -487,22 +487,22 @@ export function templateModificationSettingsForId$(templateId: number) {
     );
 }
 
+function getTemplateImageData$(templateId: number) {
+    return getTemplateCanvas$(templateId).pipe(
+        withLatestFrom(getTemplateById$(templateId)),
+        map(([canvas, template]) => canvas.getContext('2d')?.getImageData(0, 0, template.width, template.height, { colorSpace: 'srgb' })),
+        filter((x) => x !== undefined)
+    );
+}
+
 // Update existing on screen modified templates
 export function processModifiedTemplate$(id: { id: number; originalId: number }) {
     return templateModificationSettingsForId$(id.originalId).pipe(
         filter((x) => x.convertColors),
-        switchMap((x) =>
-            of(x).pipe(
-                withLatestFrom(getTemplateById$(id.originalId)),
-                combineLatestWith(getTemplateCanvas$(id.originalId)),
-                map(([[, template], canvas]) => canvas.getContext('2d')?.getImageData(0, 0, template.width, template.height, { colorSpace: 'srgb' })),
-                filter((x) => x !== undefined),
-                map((imageData) => [x, imageData] as const)
-            )
-        ),
+        switchMap((x) => of(x).pipe(combineLatestWith(getTemplateImageData$(id.originalId).pipe(take(1)), getTemplateImageData$(id.id).pipe(take(1))))),
         combineLatestWith(stateCanvasPaletteObs, canvasPaletteReservedOffset$),
         switchMap(
-            ([[modificationSettings, imageData], palette, reservedOffset]) =>
+            ([[modificationSettings, imageData, baseImageData], palette, reservedOffset]) =>
                 new Observable<ImageData>((subscriber) => {
                     const processingId = Date.now();
                     const teardown = () => {
@@ -515,6 +515,7 @@ export function processModifiedTemplate$(id: { id: number; originalId: number })
                             palette,
                             reservedOffset,
                             imageData,
+                            baseImageData,
                             modificationSettings.imageBrightness,
                             proxy((partialImageData) => {
                                 subscriber.next(partialImageData);

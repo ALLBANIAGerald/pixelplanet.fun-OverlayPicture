@@ -23,12 +23,12 @@ export const pictureConverter = {
         colorPalette: [number, number, number][],
         reservedOffset: number,
         imageData: ImageData,
+        baseImageData: ImageData,
         brightenBy: number,
         partialUpdate: (imageData: ImageData) => void
     ) {
         cancellationIds.delete(id);
-        const outImageData = new ImageData(imageData.data, imageData.width, imageData.height);
-        outImageData.data.set(imageData.data);
+        const outImageData = new ImageData(baseImageData.data, imageData.width, imageData.height);
         for (let y = 0; y < outImageData.height; y++) {
             for (let x = 0; x < outImageData.width; x++) {
                 const idxNum = outImageData.width * y + x;
