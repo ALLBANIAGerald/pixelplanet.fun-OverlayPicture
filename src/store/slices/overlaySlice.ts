@@ -605,11 +605,19 @@ function syncEnabledStateWithConvertColors(templateId: number) {
         filter((x) => x !== undefined)
     );
     const isConvertEnabled$ = templateModificationSettingsForId$(templateId).pipe(map((x) => x.convertColors));
-    const isConvertJustChanged$ = isConvertEnabled$.pipe(
+    const isConvertJustEnabled$ = isConvertEnabled$.pipe(
         startWith(true),
         pairwise(),
         map(([a, b]) => !a && b),
-        distinctUntilChanged()
+        distinctUntilChanged(),
+        filter((x) => !!x)
+    );
+    const isConvertJustDisabled$ = isConvertEnabled$.pipe(
+        startWith(false),
+        pairwise(),
+        map(([a, b]) => a && !b),
+        distinctUntilChanged(),
+        filter((x) => !!x)
     );
 
     const syncOgEnabledConvertOff = isOriginal$.pipe(
@@ -632,8 +640,7 @@ function syncEnabledStateWithConvertColors(templateId: number) {
         })
     );
 
-    const syncConvertOnModEnabled = isConvertJustChanged$.pipe(
-        filter((x) => x),
+    const syncConvertOnModEnabled = isConvertJustEnabled$.pipe(
         withLatestFrom(isOriginal$, isEnabled$),
         filter(([, isOg, isEnabled]) => isOg && isEnabled),
         withLatestFrom(matchingModifiedTemplateId$),
@@ -650,8 +657,7 @@ function syncEnabledStateWithConvertColors(templateId: number) {
         })
     );
 
-    const syncConvertOffOgEnabled = isConvertJustChanged$.pipe(
-        filter((x) => !x),
+    const syncConvertOffOgEnabled = isConvertJustDisabled$.pipe(
         withLatestFrom(isModified$, isEnabled$),
         filter(([, isModified, isEnabled]) => isModified && isEnabled),
         withLatestFrom(matchingModifiedTemplateId$),
